@@ -11,21 +11,26 @@ from sections import (
 from utils.state_manager import (
     compute_progress,
     is_section_completed,
-    save_response_to_csv
+    flatten_session_state
 )
 
-# App config
+from utils.sheet_io import (
+    load_data_by_ips_id,
+    append_or_update_row
+)
+
+# Page setup
 st.set_page_config(page_title="Encuesta BLH", layout="wide")
 
-# Load and display logo
+# Header with logo
 col_logo, col_title = st.columns([1, 5])
 with col_logo:
-    st.image("./assets/Logo.png", width=100)
+    st.image("assets/Logo.png", width=100)
 with col_title:
     st.title("Formulario para Bancos de Leche Humana (BLH)")
     st.markdown("Complete cada sección. Puede guardar su progreso y continuar más tarde.")
 
-# Section routing definition
+# Section list
 section_definitions = [
     {"label": "1. Datos Generales", "key": "datos_generales", "render": general_info.render},
     {"label": "2. Procesos Estandarizados", "key": "procesos_realizados", "render": processes.render},
@@ -39,24 +44,37 @@ section_definitions = [
     {"label": "10. Depreciación e Impuestos", "key": "depreciacion", "render": depreciation.render}
 ]
 
-# Enforce identification before proceeding
+# Identification section first
 identification.render()
+
 if "identificacion" not in st.session_state:
     st.warning("⚠️ Complete la identificación para continuar.")
     st.stop()
 
-# Initialize navigation index
+# Load existing data from Google Sheets if not already loaded
+if "data_loaded" not in st.session_state:
+    ips_id = st.session_state["identificacion"].get("ips_id")
+    if ips_id:
+        existing_data = load_data_by_ips_id(ips_id)
+        if existing_data:
+            st.session_state.update(existing_data)
+            st.info(f"📂 Datos cargados para IPS: {ips_id}")
+        else:
+            st.info(f"🆕 No se encontró información previa para {ips_id}.")
+    st.session_state["data_loaded"] = True
+
+# Navigation setup
 if "section_index" not in st.session_state:
     st.session_state.section_index = 0
 
 current_section = section_definitions[st.session_state.section_index]
 
-# Progress bar
+# Progress
 tracked_keys = [s["key"] for s in section_definitions]
 filled, percent = compute_progress(st.session_state, tracked_keys)
 st.progress(percent, text=f"{filled} de {len(tracked_keys)} secciones completadas")
 
-# Sidebar navigation
+# Sidebar
 with st.sidebar:
     st.markdown("### Navegación rápida")
     labels_with_status = [
@@ -71,7 +89,7 @@ with st.sidebar:
 st.subheader(current_section["label"])
 current_section["render"]()
 
-# Navigation buttons
+# Section navigation
 col1, col2, _ = st.columns([1, 1, 6])
 with col1:
     if st.session_state.section_index > 0:
@@ -85,10 +103,13 @@ with col2:
             st.session_state.section_index += 1
             st.experimental_rerun()
 
-# Export full dataset
+# Export full survey
 st.markdown("---")
-st.markdown("### Guardar toda la encuesta")
-if st.button("📤 Guardar encuesta completa como archivo CSV"):
-    st.info("📎 Esta versión de prueba no guarda datos. Solo para revisión del flujo.")
-    file_path = save_response_to_csv(st.session_state)
-    st.success(f"✅ Encuesta guardada en: `{file_path}`")
+st.markdown("### Guardar encuesta completa")
+if st.button("📤 Guardar encuesta completa como archivo CSV y Google Sheets"):
+    flat_data = flatten_session_state(st.session_state)
+    success = append_or_update_row(flat_data)
+    if success:
+        st.success("✅ Encuesta guardada correctamente en Google Sheets.")
+    else:
+        st.error("❌ No se pudo guardar en Google Sheets.")

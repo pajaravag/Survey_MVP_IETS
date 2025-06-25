@@ -1,23 +1,31 @@
 import streamlit as st
+from utils.sheet_io import append_or_update_row
+from utils.state_manager import flatten_session_state
 
 def render():
-    st.header("1. Datos Generales del BLH")
+    st.header("1. Datos Generales")
 
-    with st.form("datos_generales_form"):
-        nombre_inst = st.text_input("Nombre de la institución")
-        anio_impl = st.number_input("Año de implementación del BLH", min_value=1990, max_value=2100, step=1)
-        
-        tipo_inst = st.radio(
-            "Tipo de institución",
-            options=["Hospital público", "Clínica privada", "Mixta"]
-        )
+    # Retrieve pre-filled values if available
+    prefix = "datos_generales__"
+    nombre = st.text_input("Nombre del establecimiento", value=st.session_state.get(prefix + "nombre_inst", ""))
+    tipo_inst = st.selectbox("Tipo de institución", ["Pública", "Privada", "Mixta"], 
+                             index=["Pública", "Privada", "Mixta"].index(
+                                 st.session_state.get(prefix + "tipo_inst", "Pública")
+                             ))
 
-        submit = st.form_submit_button("Guardar sección")
-
-    if submit:
-        st.success("✅ Datos guardados correctamente (aún no se persisten en disco).")
+    # Save section button
+    if st.button("💾 Guardar sección - Datos Generales"):
+        # Save section data to session
         st.session_state["datos_generales"] = {
-            "nombre_inst": nombre_inst,
-            "anio_impl": anio_impl,
+            "nombre_inst": nombre,
             "tipo_inst": tipo_inst
         }
+
+        # Flatten full session and export
+        flat_data = flatten_session_state(st.session_state)
+        success = append_or_update_row(flat_data)
+
+        if success:
+            st.success("✅ Sección guardada en Google Sheets.")
+        else:
+            st.error("❌ No se pudo guardar. Verifica conexión.")
