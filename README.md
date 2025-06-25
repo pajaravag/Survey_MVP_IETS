@@ -1,4 +1,4 @@
-# 🍽️ Encuesta para Bancos de Leche Humana (BLH) – IETS
+# 📈 Encuesta para Bancos de Leche Humana (BLH) – IETS
 
 Este repositorio contiene una aplicación interactiva desarrollada con [Streamlit](https://streamlit.io) para recolectar información estructurada desde IPS (Instituciones Prestadoras de Salud) sobre la operación, costos y procesos relacionados con Bancos de Leche Humana (BLH) en Colombia.
 
