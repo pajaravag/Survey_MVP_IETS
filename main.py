@@ -32,7 +32,7 @@ with col_title:
     st.title("Formulario para Bancos de Leche Humana (BLH)")
     st.markdown("Complete cada sección. Puede guardar su progreso y continuar más tarde.")
 
-# Section list definition
+# Section list
 section_definitions = [
     {"label": "1. Datos Generales", "key": "datos_generales", "render": general_info.render},
     {"label": "2. Procesos Estandarizados", "key": "procesos_realizados", "render": processes.render},
@@ -53,7 +53,7 @@ if "identificacion" not in st.session_state:
     st.warning("⚠️ Complete la identificación para continuar.")
     st.stop()
 
-# Restore session state if rerun cleared it
+# Restore existing Google Sheets data if needed
 if "datos_generales" not in st.session_state and "identificacion" in st.session_state:
     ips_id = st.session_state["identificacion"].get("ips_id")
     if ips_id:
@@ -62,34 +62,40 @@ if "datos_generales" not in st.session_state and "identificacion" in st.session_
             st.session_state.update(existing_data)
             st.info(f"📂 Datos restaurados para IPS: {ips_id}")
 
-# Ensure section index is initialized
+# Initialize state
 if "section_index" not in st.session_state:
     st.session_state.section_index = 0
+if "navigation_triggered" not in st.session_state:
+    st.session_state.navigation_triggered = False
 
-# Determine current section
-current_section = section_definitions[st.session_state.section_index]
-
-# Progress bar
-tracked_keys = [s["key"] for s in section_definitions]
-filled, percent = compute_progress(st.session_state, tracked_keys)
-st.progress(percent, text=f"{filled} de {len(tracked_keys)} secciones completadas")
-
-# Sidebar navigation
+# Sidebar — only set section if user manually changes it
 with st.sidebar:
     st.markdown("### Navegación rápida")
     labels_with_status = [
         f"{'✅' if is_section_completed(st.session_state, s['key']) else '🔲'} {s['label']}"
         for s in section_definitions
     ]
-    selected_label = st.selectbox("Ir a sección", labels_with_status)
-    selected_clean = selected_label[2:].strip()
-    st.session_state.section_index = next(
-        i for i, s in enumerate(section_definitions) if s["label"] == selected_clean
-    )
+    current_label = f"{'✅' if is_section_completed(st.session_state, section_definitions[st.session_state.section_index]['key']) else '🔲'} {section_definitions[st.session_state.section_index]['label']}"
+
+    selected_label = st.selectbox("Ir a sección", labels_with_status, index=labels_with_status.index(current_label))
+
+    if not st.session_state.navigation_triggered:
+        selected_clean = selected_label[2:].strip()
+        selected_index = next(i for i, s in enumerate(section_definitions) if s["label"] == selected_clean)
+        st.session_state.section_index = selected_index
+
+# Reset navigation flag after rerun (must come after selectbox)
+st.session_state.navigation_triggered = False
 
 # Render current section
+current_section = section_definitions[st.session_state.section_index]
 st.subheader(current_section["label"])
 current_section["render"]()
+
+# Progress bar
+tracked_keys = [s["key"] for s in section_definitions]
+filled, percent = compute_progress(st.session_state, tracked_keys)
+st.progress(percent, text=f"{filled} de {len(tracked_keys)} secciones completadas")
 
 # Navigation buttons
 col1, col2, _ = st.columns([1, 1, 6])
@@ -97,15 +103,17 @@ with col1:
     if st.session_state.section_index > 0:
         if st.button("⬅️ Sección anterior"):
             st.session_state.section_index -= 1
+            st.session_state.navigation_triggered = True
             st.rerun()
 
 with col2:
     if st.session_state.section_index < len(section_definitions) - 1:
         if st.button("➡️ Siguiente sección"):
             st.session_state.section_index += 1
+            st.session_state.navigation_triggered = True
             st.rerun()
 
-# Export full survey
+# Save full survey
 st.markdown("---")
 st.markdown("### Guardar encuesta completa")
 if st.button("📤 Guardar encuesta completa como archivo CSV y Google Sheets"):

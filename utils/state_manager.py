@@ -3,29 +3,28 @@ import pandas as pd
 from datetime import datetime
 
 
-def flatten_session_state(session_state):
+def flatten_session_state(d, parent_key='', sep='__'):
     """
-    Flattens nested dictionaries for flat CSV export.
+    Fully flattens any nested structure inside session_state for safe CSV/Google Sheets export.
+    Handles arbitrary nesting depth. List values are joined as comma-separated strings.
     """
-    flat_data = {}
-    for key, value in session_state.items():
-        if isinstance(value, dict):
-            for subkey, subval in value.items():
-                if isinstance(subval, dict):  # nested dict (e.g. equipment per role)
-                    for k, v in subval.items():
-                        flat_data[f"{key}__{subkey}__{k}"] = v
-                else:
-                    flat_data[f"{key}__{subkey}"] = subval
-        elif isinstance(value, list):
-            flat_data[key] = ", ".join(map(str, value))
+    items = {}
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
+        if isinstance(v, dict):
+            items.update(flatten_session_state(v, new_key, sep=sep))
+        elif isinstance(v, list):
+            items[new_key] = ", ".join(map(str, v))
         else:
-            flat_data[key] = value
-    return flat_data
+            items[new_key] = v
+    return items
 
 
 def save_response_to_csv(session_state, output_dir="data/responses"):
     """
-    Saves the session to both a unique file and appends to a master file.
+    Saves a single session state response to:
+    - A unique timestamped file
+    - A master file for all responses
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -33,7 +32,7 @@ def save_response_to_csv(session_state, output_dir="data/responses"):
     flat_data = flatten_session_state(session_state)
     df = pd.DataFrame([flat_data])
 
-    # Timestamped filename
+    # Create unique filename with IPS ID and timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     ips_id = session_state.get("identificacion", {}).get("ips_id", "anonimo").replace(" ", "_")
     unique_filename = f"BLH_{ips_id}_{timestamp}.csv"
@@ -49,17 +48,18 @@ def save_response_to_csv(session_state, output_dir="data/responses"):
 
     return unique_path
 
+
 def compute_progress(session_state, tracked_sections):
     """
-    Counts how many sections are present in session_state
-    and returns progress in percent.
+    Calculates how many sections are filled and returns a progress count and percentage.
     """
-    filled = sum(1 for key in tracked_sections if key in session_state)
+    filled = sum(1 for key in tracked_sections if key in session_state and session_state[key])
     percent_complete = int((filled / len(tracked_sections)) * 100)
     return filled, percent_complete
 
+
 def is_section_completed(session_state, key):
     """
-    Returns True if the section key exists and has non-empty data.
+    Returns True if the given section is filled and not empty.
     """
-    return key in session_state and session_state[key] != {} and session_state[key] is not None
+    return key in session_state and session_state[key] not in (None, {}, [])
