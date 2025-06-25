@@ -5,11 +5,41 @@ import pandas as pd
 
 # Google Sheets API Setup
 def connect_to_sheet():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(st.secrets["gspread"], scope)
-    client = gspread.authorize(creds)
-    sheet = client.open(st.secrets["sheet"]["name"]).sheet1
-    return sheet
+    """
+    Conecta con una hoja de cálculo de Google Sheets utilizando credenciales
+    almacenadas en st.secrets y devuelve el objeto Sheet (Worksheet).
+    
+    Asegura conexión segura y control de errores, recomendado para entorno de producción.
+    """
+    SPREADSHEET_ID = "1KusiBkYqlL33GmPQN2PfUripYUXVjmDtDG43H-pAmGQ"
+
+    try:
+        # Autenticación desde secrets.toml
+        client = gspread.service_account_from_dict(st.secrets["gspread"])
+
+        # Abrir hoja por ID directamente (más robusto que por nombre)
+        spreadsheet = client.open_by_key(SPREADSHEET_ID)
+
+        # Acceder a la primera hoja (por defecto: Sheet1)
+        sheet = spreadsheet.sheet1
+
+        return sheet
+
+    except gspread.exceptions.APIError as api_err:
+        st.error("❌ Error de acceso a Google Sheets (APIError). Verifica si habilitaste la API de Google Drive.")
+        st.info("Habilita la API en: https://console.developers.google.com/apis/api/drive.googleapis.com/")
+        st.exception(api_err)
+        st.stop()
+
+    except gspread.exceptions.SpreadsheetNotFound:
+        st.error("❌ Hoja de cálculo no encontrada. Verifica si el ID es correcto y si el servicio tiene acceso.")
+        st.info(f"ID usado: `{SPREADSHEET_ID}`")
+        st.stop()
+
+    except Exception as e:
+        st.error("❌ Error inesperado al conectar con Google Sheets.")
+        st.exception(e)
+        st.stop()
 
 # 🔹 Load data from Google Sheets for a given IPS ID
 def load_data_by_ips_id(ips_id):

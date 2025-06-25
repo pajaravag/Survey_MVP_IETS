@@ -30,7 +30,7 @@ def render():
         key="mantenimiento_anual"
     )
 
-    if st.button("💾 Guardar sección - Depreciación e Impuestos"):
+    if st.button("💾 Guardar sección y finalizar"):
         st.session_state["depreciacion"] = {
             "valor_mensual_cop": valor_mensual,
             "porcentaje_depreciacion": porcentaje,
@@ -42,5 +42,9 @@ def render():
 
         if success:
             st.success("✅ Datos de depreciación registrados y guardados correctamente en Google Sheets.")
+            st.balloons()  # 🎈 Optional celebratory touch
+            if "section_index" in st.session_state:
+                st.session_state.section_index = 9  # Stay on this section or show summary
+                st.rerun()
         else:
             st.error("❌ Error al guardar los datos.")

@@ -38,13 +38,14 @@ def render():
             value=data.get("leche_distribuida", 0.0)
         )
 
-        submitted = st.form_submit_button("💾 Guardar sección")
+        submitted = st.form_submit_button("💾 Guardar sección y continuar")
 
     if submitted:
         total_pct = pct_inst + pct_dom + pct_centros
         if total_pct != 100:
             st.warning(f"⚠️ La suma de los porcentajes debe ser 100% (actual: {total_pct}%).")
         else:
+            # Save to session
             st.session_state["donantes_receptores"] = {
                 "donantes_mes": donantes_mes,
                 "volumen_mes": volumen_mes,
@@ -55,10 +56,16 @@ def render():
                 "leche_distribuida": leche_distribuida
             }
 
+            # Flatten and save to Google Sheets
             flat_data = flatten_session_state(st.session_state)
             success = append_or_update_row(flat_data)
 
             if success:
                 st.success("✅ Datos registrados y guardados en Google Sheets.")
+
+                # Advance to next section
+                if "section_index" in st.session_state and st.session_state.section_index < 9:
+                    st.session_state.section_index += 1
+                    st.rerun()
             else:
                 st.error("❌ Hubo un error al guardar los datos.")

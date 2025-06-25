@@ -59,7 +59,7 @@ def render():
                     "costo": costo
                 }
 
-    if st.button("💾 Guardar sección - Infraestructura"):
+    if st.button("💾 Guardar sección y continuar"):
         st.session_state["infraestructura_equipos"] = resultados
 
         flat_data = flatten_session_state(st.session_state)
@@ -67,5 +67,8 @@ def render():
 
         if success:
             st.success("✅ Datos de infraestructura registrados y guardados en Google Sheets.")
+            if "section_index" in st.session_state and st.session_state.section_index < 9:
+                st.session_state.section_index += 1
+                st.rerun()
         else:
             st.error("❌ Error al guardar los datos.")

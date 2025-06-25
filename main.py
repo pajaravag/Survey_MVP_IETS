@@ -1,5 +1,6 @@
 import streamlit as st
 from PIL import Image
+import gspread
 
 # Section modules
 from sections import (
@@ -26,11 +27,12 @@ st.set_page_config(page_title="Encuesta BLH", layout="wide")
 col_logo, col_title = st.columns([1, 5])
 with col_logo:
     st.image("assets/Logo.png", width=100)
+
 with col_title:
     st.title("Formulario para Bancos de Leche Humana (BLH)")
     st.markdown("Complete cada sección. Puede guardar su progreso y continuar más tarde.")
 
-# Section list
+# Section list definition
 section_definitions = [
     {"label": "1. Datos Generales", "key": "datos_generales", "render": general_info.render},
     {"label": "2. Procesos Estandarizados", "key": "procesos_realizados", "render": processes.render},
@@ -44,37 +46,35 @@ section_definitions = [
     {"label": "10. Depreciación e Impuestos", "key": "depreciacion", "render": depreciation.render}
 ]
 
-# Identification section first
+# Show identification first
 identification.render()
 
 if "identificacion" not in st.session_state:
     st.warning("⚠️ Complete la identificación para continuar.")
     st.stop()
 
-# Load existing data from Google Sheets if not already loaded
-if "data_loaded" not in st.session_state:
+# Restore session state if rerun cleared it
+if "datos_generales" not in st.session_state and "identificacion" in st.session_state:
     ips_id = st.session_state["identificacion"].get("ips_id")
     if ips_id:
         existing_data = load_data_by_ips_id(ips_id)
         if existing_data:
             st.session_state.update(existing_data)
-            st.info(f"📂 Datos cargados para IPS: {ips_id}")
-        else:
-            st.info(f"🆕 No se encontró información previa para {ips_id}.")
-    st.session_state["data_loaded"] = True
+            st.info(f"📂 Datos restaurados para IPS: {ips_id}")
 
-# Navigation setup
+# Ensure section index is initialized
 if "section_index" not in st.session_state:
     st.session_state.section_index = 0
 
+# Determine current section
 current_section = section_definitions[st.session_state.section_index]
 
-# Progress
+# Progress bar
 tracked_keys = [s["key"] for s in section_definitions]
 filled, percent = compute_progress(st.session_state, tracked_keys)
 st.progress(percent, text=f"{filled} de {len(tracked_keys)} secciones completadas")
 
-# Sidebar
+# Sidebar navigation
 with st.sidebar:
     st.markdown("### Navegación rápida")
     labels_with_status = [
@@ -83,25 +83,27 @@ with st.sidebar:
     ]
     selected_label = st.selectbox("Ir a sección", labels_with_status)
     selected_clean = selected_label[2:].strip()
-    st.session_state.section_index = next(i for i, s in enumerate(section_definitions) if s["label"] == selected_clean)
+    st.session_state.section_index = next(
+        i for i, s in enumerate(section_definitions) if s["label"] == selected_clean
+    )
 
 # Render current section
 st.subheader(current_section["label"])
 current_section["render"]()
 
-# Section navigation
+# Navigation buttons
 col1, col2, _ = st.columns([1, 1, 6])
 with col1:
     if st.session_state.section_index > 0:
         if st.button("⬅️ Sección anterior"):
             st.session_state.section_index -= 1
-            st.experimental_rerun()
+            st.rerun()
 
 with col2:
     if st.session_state.section_index < len(section_definitions) - 1:
         if st.button("➡️ Siguiente sección"):
             st.session_state.section_index += 1
-            st.experimental_rerun()
+            st.rerun()
 
 # Export full survey
 st.markdown("---")

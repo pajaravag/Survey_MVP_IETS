@@ -70,7 +70,7 @@ def render():
                 "salario_mensual": salario
             }
 
-    if st.button("💾 Guardar sección - Personal"):
+    if st.button("💾 Guardar sección y continuar"):
         st.session_state["personal_exclusivo"] = personal_exclusivo
         st.session_state["personal_compartido"] = personal_compartido
 
@@ -79,5 +79,8 @@ def render():
 
         if success:
             st.success("✅ Información del personal registrada y guardada en Google Sheets.")
+            if "section_index" in st.session_state and st.session_state.section_index < 9:
+                st.session_state.section_index += 1
+                st.rerun()
         else:
             st.error("❌ Error al guardar los datos.")

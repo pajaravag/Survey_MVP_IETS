@@ -12,9 +12,12 @@ def render():
 
     st.subheader("📍 Modalidades de recepción de leche humana")
     modalidades = {
-        "En la institución donde se encuentra el BLH": st.checkbox("Institución", value=modalidades_prev.get("En la institución donde se encuentra el BLH", False)),
-        "En las casas de las donantes": st.checkbox("Domicilio", value=modalidades_prev.get("En las casas de las donantes", False)),
-        "En centros de recolección": st.checkbox("Centros de recolección", value=modalidades_prev.get("En centros de recolección", False))
+        "En la institución donde se encuentra el BLH": st.checkbox(
+            "Institución", value=modalidades_prev.get("En la institución donde se encuentra el BLH", False)),
+        "En las casas de las donantes": st.checkbox(
+            "Domicilio", value=modalidades_prev.get("En las casas de las donantes", False)),
+        "En centros de recolección": st.checkbox(
+            "Centros de recolección", value=modalidades_prev.get("En centros de recolección", False))
     }
 
     st.subheader("🚚 Equipos de transporte utilizados")
@@ -27,12 +30,16 @@ def render():
 
     equipos_data = {}
     if usa_equipos == "Sí":
-        equipos = ["Termos rígidos", "Cajas térmicas de poliestireno", "Neveras portátiles con acumuladores de frío"]
+        equipos = [
+            "Termos rígidos",
+            "Cajas térmicas de poliestireno",
+            "Neveras portátiles con acumuladores de frío"
+        ]
         for eq in equipos:
             eq_data = equipos_prev.get(eq, {})
             st.markdown(f"**{eq}**")
             cantidad = st.number_input(
-                f"Cantidad de contenedores ({eq})", 
+                f"Cantidad de contenedores ({eq})",
                 min_value=0, step=1,
                 value=eq_data.get("cantidad", 0),
                 key=f"{eq}_cantidad"
@@ -74,7 +81,7 @@ def render():
         )
     }
 
-    if st.button("💾 Guardar sección - Transporte"):
+    if st.button("💾 Guardar sección y continuar"):
         st.session_state["transporte_modalidades"] = modalidades
         st.session_state["transporte_equipos"] = equipos_data if usa_equipos == "Sí" else {}
         st.session_state["transporte_costos_zona"] = costos_zona
@@ -84,6 +91,8 @@ def render():
 
         if success:
             st.success("✅ Datos de transporte registrados y guardados en Google Sheets.")
+            if "section_index" in st.session_state and st.session_state.section_index < 9:
+                st.session_state.section_index += 1
+                st.rerun()
         else:
             st.error("❌ Error al guardar los datos.")
-

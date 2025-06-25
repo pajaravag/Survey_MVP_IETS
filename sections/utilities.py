@@ -25,7 +25,7 @@ def render():
         )
         results[servicio] = costo
 
-    if st.button("💾 Guardar sección - Servicios Públicos"):
+    if st.button("💾 Guardar sección y continuar"):
         st.session_state["servicios_publicos"] = results
 
         flat_data = flatten_session_state(st.session_state)
@@ -33,5 +33,8 @@ def render():
 
         if success:
             st.success("✅ Servicios públicos registrados y guardados correctamente en Google Sheets.")
+            if "section_index" in st.session_state and st.session_state.section_index < 9:
+                st.session_state.section_index += 1
+                st.rerun()
         else:
             st.error("❌ Error al guardar los datos.")

@@ -8,10 +8,20 @@ def render():
 
     categorias = {
         "Insumos para almacenar": ["Frascos estériles"],
-        "Reactivos de laboratorio": ["Caldo bilis-verde brillante al 2%", "Tubos microhematocritos fco x 100", "Alcohol al 95%"],
-        "Elementos de protección personal": ["Bata desechable", "Guantes", "Tapabocas", "Polainas desechables", "Kit desechable paquete", "Gorro desechable"],
+        "Reactivos de laboratorio": [
+            "Caldo bilis-verde brillante al 2%",
+            "Tubos microhematocritos fco x 100",
+            "Alcohol al 95%"
+        ],
+        "Elementos de protección personal": [
+            "Bata desechable", "Guantes", "Tapabocas",
+            "Polainas desechables", "Kit desechable paquete", "Gorro desechable"
+        ],
         "Etiquetas y sistemas de trazabilidad": ["Etiquetas"],
-        "Productos de limpieza/desinfección": ["Desinfectante", "Jabón quirúrgico", "Alcohol 70%", "Antibacterial", "Toalla de papel"],
+        "Productos de limpieza/desinfección": [
+            "Desinfectante", "Jabón quirúrgico", "Alcohol 70%",
+            "Antibacterial", "Toalla de papel"
+        ],
         "Materiales de laboratorio": ["Examen de laboratorio"],
         "Otros": ["Otro 1", "Otro 2", "Otro 3"]
     }
@@ -54,7 +64,7 @@ def render():
                     "costo": costo
                 }
 
-    if st.button("💾 Guardar sección - Insumos mensuales"):
+    if st.button("💾 Guardar sección y continuar"):
         st.session_state["insumos_mensuales"] = insumos_data
 
         flat_data = flatten_session_state(st.session_state)
@@ -62,5 +72,8 @@ def render():
 
         if success:
             st.success("✅ Datos de insumos registrados y guardados correctamente en Google Sheets.")
+            if "section_index" in st.session_state and st.session_state.section_index < 9:
+                st.session_state.section_index += 1
+                st.rerun()
         else:
             st.error("❌ Error al guardar los datos.")

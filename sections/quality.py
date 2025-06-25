@@ -30,7 +30,7 @@ def render():
         key="control_micro"
     )
 
-    if st.button("💾 Guardar sección - Eficiencia y Calidad"):
+    if st.button("💾 Guardar sección y continuar"):
         st.session_state["calidad_seguridad"] = {
             "leche_descartada_litros": descartada,
             "tiempo_promedio_dias": tiempo_recoleccion_a_distrib,
@@ -42,5 +42,8 @@ def render():
 
         if success:
             st.success("✅ Datos de calidad y eficiencia registrados y guardados en Google Sheets.")
+            if "section_index" in st.session_state and st.session_state.section_index < 9:
+                st.session_state.section_index += 1
+                st.rerun()
         else:
             st.error("❌ Error al guardar los datos.")
