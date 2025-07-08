@@ -9,6 +9,12 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError):
         return default
 
+def safe_int(value, default=0):
+    try:
+        return int(float(value))
+    except (ValueError, TypeError):
+        return default
+
 def render():
     st.header("9. Eficiencia, Calidad y Seguridad")
 
@@ -16,9 +22,10 @@ def render():
     ### 🛡️ Instrucciones:
     Por favor registre la información relacionada con la **eficiencia, seguridad y calidad** del Banco de Leche Humana (BLH):
 
-    - Volumen promedio de leche **descartada** (litros por mes).
-    - Tiempo promedio desde la **recolección hasta la distribución** (días).
+    - Volumen promedio de leche **descartada** (**ml/mes**).
+    - Tiempo promedio desde la **recolección hasta la distribución** (**días**).
     - Si se realiza **control microbiológico post-pasteurización**.
+    - Número promedio de **pruebas microbiológicas** realizadas por mes.
 
     Si algún valor no aplica, registre **0** o seleccione **No aplica**.
     """)
@@ -35,15 +42,15 @@ def render():
     # Input Fields
     # ─────────────────────────────────
 
-    leche_descartada = st.number_input(
-        "Volumen promedio de leche descartada (litros/mes)",
-        min_value=0.0, step=0.1,
-        value=safe_float(prev_data.get("leche_descartada_litros", 0.0)),
+    leche_descartada_ml = st.number_input(
+        "Volumen promedio de leche descartada (ml/mes)",
+        min_value=0.0, step=10.0,
+        value=safe_float(prev_data.get("leche_descartada_ml", 0.0)),
         key=prefix + "leche_descartada"
     )
 
-    tiempo_distribucion = st.number_input(
-        "Tiempo promedio desde recolección hasta distribución (días)",
+    tiempo_distribucion_dias = st.number_input(
+        "Tiempo promedio desde la recolección hasta la distribución (días)",
         min_value=0.0, step=0.1,
         value=safe_float(prev_data.get("tiempo_promedio_dias", 0.0)),
         key=prefix + "tiempo_distribucion"
@@ -57,14 +64,22 @@ def render():
         key=prefix + "control_micro"
     )
 
+    n_pruebas_micro = st.number_input(
+        "Número promedio de pruebas microbiológicas realizadas por mes",
+        min_value=0, step=1,
+        value=safe_int(prev_data.get("n_pruebas_micro", 0)),
+        key=prefix + "n_pruebas"
+    )
+
     # ─────────────────────────────────
     # Automatic Completion Check (✅)
     # ─────────────────────────────────
 
     st.session_state[completion_flag] = (
-        leche_descartada > 0 or
-        tiempo_distribucion > 0 or
-        control_micro in ["Sí", "No"]
+        leche_descartada_ml > 0 or
+        tiempo_distribucion_dias > 0 or
+        control_micro in ["Sí", "No"] or
+        n_pruebas_micro > 0
     )
 
     # ─────────────────────────────────
@@ -73,16 +88,18 @@ def render():
 
     if st.button("💾 Guardar sección - Eficiencia, Calidad y Seguridad"):
         st.session_state[prefix + "data"] = {
-            "leche_descartada_litros": leche_descartada,
-            "tiempo_promedio_dias": tiempo_distribucion,
-            "control_microbiologico_post": control_micro
+            "leche_descartada_ml": leche_descartada_ml,
+            "tiempo_promedio_dias": tiempo_distribucion_dias,
+            "control_microbiologico_post": control_micro,
+            "n_pruebas_micro": n_pruebas_micro
         }
 
-        # Re-confirm completion
+        # Confirm completion
         st.session_state[completion_flag] = (
-            leche_descartada > 0 or
-            tiempo_distribucion > 0 or
-            control_micro in ["Sí", "No"]
+            leche_descartada_ml > 0 or
+            tiempo_distribucion_dias > 0 or
+            control_micro in ["Sí", "No"] or
+            n_pruebas_micro > 0
         )
 
         flat_data = flatten_session_state(st.session_state)
@@ -102,7 +119,8 @@ def render():
 
     with st.expander("🔍 Ver datos guardados en esta sección"):
         st.write({
-            "Leche descartada (L/mes)": leche_descartada,
-            "Tiempo promedio (días)": tiempo_distribucion,
-            "Control microbiológico": control_micro
+            "Leche descartada (ml/mes)": leche_descartada_ml,
+            "Tiempo promedio (días)": tiempo_distribucion_dias,
+            "Control microbiológico": control_micro,
+            "Pruebas microbiológicas/mes": n_pruebas_micro
         })

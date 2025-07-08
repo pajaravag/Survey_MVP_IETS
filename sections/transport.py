@@ -9,11 +9,13 @@ def safe_int(value, default=0):
     except (ValueError, TypeError):
         return default
 
+
 def safe_float(value, default=0.0):
     try:
         return float(value)
     except (ValueError, TypeError):
         return default
+
 
 def render():
     st.header("8. Transporte y Recolección de Leche Humana")
@@ -24,23 +26,21 @@ def render():
 
     - Indique los **lugares de recolección** donde se reciben donaciones.
     - Declare si se utilizan **equipos especializados** (termos, neveras, etc.).
-    - Ingrese los **costos promedio mensuales** para cada zona.
+    - Ingrese los **costos promedio mensuales** y **datos detallados** para cada zona.
 
     Si un dato no aplica, deje en **0** o desmarcado.
     """)
 
-    # ─────────────────────────────
-    # Keys & State
-    # ─────────────────────────────
-
     prefix_modal = "transporte_modalidades__"
     prefix_equipos = "transporte_equipos__"
     prefix_costos = "transporte_costos_zona__"
+    prefix_detalle_zonas = "transporte_detalle_zonas__"
     completion_flag = "transporte_modalidades__completed"
 
     modalidades_prev = st.session_state.get(prefix_modal + "data", {})
     equipos_prev = st.session_state.get(prefix_equipos + "data", {})
     costos_prev = st.session_state.get(prefix_costos + "data", {})
+    detalle_prev = st.session_state.get(prefix_detalle_zonas + "data", {})
 
     # ─────────────────────────────
     # Modalidades de recolección
@@ -100,46 +100,64 @@ def render():
             }
 
     # ─────────────────────────────
-    # Costos por zona
+    # Detalle por zona (Volumen, Km, Costo)
     # ─────────────────────────────
 
-    st.subheader("🚗 Costos mensuales de transporte")
-    costos_zona = {
-        "Donación en zona urbana": st.number_input(
-            "Costo zona urbana ($ COP/mes)", min_value=0.0, step=1000.0,
-            value=safe_float(costos_prev.get("Donación en zona urbana", 0.0))
-        ),
-        "Donación en zona rural": st.number_input(
-            "Costo zona rural ($ COP/mes)", min_value=0.0, step=1000.0,
-            value=safe_float(costos_prev.get("Donación en zona rural", 0.0))
-        ),
-        "Donación en zonas rurales alejadas": st.number_input(
-            "Costo zonas rurales alejadas ($ COP/mes)", min_value=0.0, step=1000.0,
-            value=safe_float(costos_prev.get("Donación en zonas rurales alejadas", 0.0))
+    st.subheader("📊 Detalle por zona de recolección")
+
+    zonas = [
+        "Donación en zona urbana",
+        "Donación en zona rural",
+        "Donación en zonas rurales alejadas"
+    ]
+
+    detalle_zonas = {}
+    for zona in zonas:
+        prev = detalle_prev.get(zona, {})
+
+        st.markdown(f"**{zona}**")
+
+        volumen_ml = st.number_input(
+            f"Volumen mensual recolectado en {zona} (mL)",
+            min_value=0.0, step=100.0,
+            value=safe_float(prev.get("volumen_ml", 0.0)),
+            key=f"{zona}_volumen"
         )
-    }
+
+        kilometros = st.number_input(
+            f"Kilometraje mensual en {zona} (km)",
+            min_value=0.0, step=1.0,
+            value=safe_float(prev.get("km", 0.0)),
+            key=f"{zona}_km"
+        )
+
+        costo_zona = st.number_input(
+            f"Costo promedio mensual en {zona} ($ COP)",
+            min_value=0.0, step=1000.0,
+            value=safe_float(prev.get("costo", 0.0)),
+            key=f"{zona}_costo"
+        )
+
+        detalle_zonas[zona] = {
+            "volumen_ml": volumen_ml,
+            "km": kilometros,
+            "costo": costo_zona
+        }
 
     # ─────────────────────────────
-    # Automatic Completion Check (✅ For Progress Bar)
+    # Guardado y Progreso
     # ─────────────────────────────
 
     modalities_filled = any(modalidades.values())
-    costs_filled = any(v > 0 for v in costos_zona.values())
+    details_filled = any(v.get("volumen_ml", 0) > 0 or v.get("km", 0) > 0 or v.get("costo", 0) > 0 for v in detalle_zonas.values())
     equipment_filled = any(eq.get("cantidad", 0) > 0 for eq in equipos_data.values()) if usa_equipos == "Sí" else False
 
-    st.session_state[completion_flag] = modalities_filled or costs_filled or equipment_filled
-
-    # ─────────────────────────────
-    # Save Button
-    # ─────────────────────────────
+    st.session_state[completion_flag] = modalities_filled or details_filled or equipment_filled
 
     if st.button("💾 Guardar sección - Transporte y Recolección"):
         st.session_state[prefix_modal + "data"] = modalidades
         st.session_state[prefix_equipos + "data"] = equipos_data if usa_equipos == "Sí" else {}
-        st.session_state[prefix_costos + "data"] = costos_zona
-
-        # Reconfirm completion
-        st.session_state[completion_flag] = modalities_filled or costs_filled or equipment_filled
+        st.session_state[prefix_detalle_zonas + "data"] = detalle_zonas
 
         flat_data = flatten_session_state(st.session_state)
         success = append_or_update_row(flat_data)
@@ -150,11 +168,7 @@ def render():
                 st.session_state.section_index += 1
                 st.rerun()
         else:
-            st.error("❌ Error al guardar. Verifique e intente nuevamente.")
-
-    # ─────────────────────────────
-    # Review Expanders
-    # ─────────────────────────────
+            st.error("❌ Error al guardar. Intente nuevamente.")
 
     with st.expander("🔍 Ver modalidades guardadas"):
         st.write(modalidades)
@@ -162,5 +176,5 @@ def render():
     with st.expander("🔍 Ver equipos guardados"):
         st.write(equipos_data if usa_equipos == "Sí" else {})
 
-    with st.expander("🔍 Ver costos guardados"):
-        st.write(costos_zona)
+    with st.expander("🔍 Ver detalle de zonas guardado"):
+        st.write(detalle_zonas)

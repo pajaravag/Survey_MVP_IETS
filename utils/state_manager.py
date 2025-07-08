@@ -7,6 +7,7 @@ def flatten_session_state(d, parent_key='', sep='__'):
     """
     Recursively flattens a nested session_state dictionary for CSV or Sheets export.
     Lists are joined into comma-separated strings.
+    Booleans are converted to "Sí" / "No" for better readability.
     """
     items = {}
     for k, v in d.items():
@@ -15,6 +16,8 @@ def flatten_session_state(d, parent_key='', sep='__'):
             items.update(flatten_session_state(v, new_key, sep=sep))
         elif isinstance(v, list):
             items[new_key] = ", ".join(map(str, v))
+        elif isinstance(v, bool):
+            items[new_key] = "Sí" if v else "No"
         else:
             items[new_key] = v
     return items
@@ -22,9 +25,9 @@ def flatten_session_state(d, parent_key='', sep='__'):
 
 def save_response_to_csv(session_state, output_dir="data/responses"):
     """
-    Saves session data to both:
-    - A unique timestamped CSV file
-    - A master cumulative CSV file
+    Saves session data to:
+    - A unique timestamped CSV
+    - A cumulative master CSV (appended)
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -49,15 +52,14 @@ def save_response_to_csv(session_state, output_dir="data/responses"):
 
 def compute_progress(session_state, tracked_completion_flags):
     """
-    Calculates progress based on explicit completion flags.
+    Calculates progress based on the presence of completion flags.
 
-    Parameters:
-        session_state (dict): The Streamlit session state.
-        tracked_completion_flags (list of str): List of keys like 'datos_generales__completed'.
+    Args:
+        session_state: Streamlit session state dictionary.
+        tracked_completion_flags: List of string keys ending with '__completed'.
 
     Returns:
-        filled (int): Number of completed sections.
-        percent_complete (int): Percentage of completed sections.
+        (int, int): Tuple of (number of completed sections, percent completed).
     """
     filled = sum(1 for flag in tracked_completion_flags if session_state.get(flag, False))
     percent_complete = int((filled / len(tracked_completion_flags)) * 100) if tracked_completion_flags else 0
@@ -66,11 +68,11 @@ def compute_progress(session_state, tracked_completion_flags):
 
 def is_section_completed(session_state, completion_flag):
     """
-    Checks if a specific section is completed based on its exact flag.
+    Checks whether a section is marked as completed.
 
-    Parameters:
-        session_state (dict): The Streamlit session state.
-        completion_flag (str): The full key like 'datos_generales__completed'.
+    Args:
+        session_state: Streamlit session state dictionary.
+        completion_flag: Key like 'infraestructura_equipos__completed'.
 
     Returns:
         bool: True if completed, False otherwise.

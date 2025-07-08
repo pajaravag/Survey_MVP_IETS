@@ -23,9 +23,15 @@ def render():
     Por favor registre la información relacionada con el personal que participa en el funcionamiento del Banco de Leche Humana (BLH):
 
     - **Personal Exclusivo:** Dedicación 100% al BLH.
-    - **Personal Compartido:** Dedicación parcial. Indique porcentaje estimado.
-    - Para cada perfil: registre número de personas y salario mensual promedio.
+    - **Personal Compartido:** Dedicación parcial (indique porcentaje estimado).
+    - Registre el número de personas y el salario mensual promedio para cada perfil.
+
+    Si un rol no aplica, registre **0**.
     """)
+
+    # ─────────────────────────────
+    # Definición de Roles
+    # ─────────────────────────────
 
     roles = [
         "Auxiliar de enfermería",
@@ -49,9 +55,10 @@ def render():
     personal_exclusivo = {}
     personal_compartido = {}
 
-    # ───────────────────────────
+    # ─────────────────────────────
     # Sección: Personal Exclusivo
-    # ───────────────────────────
+    # ─────────────────────────────
+
     st.subheader("👥 Personal Exclusivo (100% dedicado)")
 
     for rol in roles:
@@ -75,9 +82,10 @@ def render():
                 "salario_mensual": salario
             }
 
-    # ───────────────────────────
+    # ─────────────────────────────
     # Sección: Personal Compartido
-    # ───────────────────────────
+    # ─────────────────────────────
+
     st.subheader("🤝 Personal Compartido (dedicación parcial)")
 
     for rol in roles:
@@ -108,24 +116,22 @@ def render():
                 "salario_mensual": salario
             }
 
-    # ───────────────────────────
-    # ✅ Live Completion Check (Progress Bar Friendly)
-    # ───────────────────────────
+    # ─────────────────────────────
+    # Validación para barra de progreso
+    # ─────────────────────────────
 
     any_exclusive = any(p.get("cantidad", 0) > 0 for p in personal_exclusivo.values())
     any_shared = any(p.get("cantidad", 0) > 0 for p in personal_compartido.values())
     st.session_state[completion_flag] = any_exclusive or any_shared
 
-    # ───────────────────────────
-    # Save Button
-    # ───────────────────────────
+    # ─────────────────────────────
+    # Botón de Guardado
+    # ─────────────────────────────
+
     if st.button("💾 Guardar sección - Personal BLH"):
         st.session_state[prefix_excl + "data"] = personal_exclusivo
         st.session_state[prefix_comp + "data"] = personal_compartido
 
-        # Re-evaluate completion (in case of first save)
-        any_exclusive = any(p.get("cantidad", 0) > 0 for p in personal_exclusivo.values())
-        any_shared = any(p.get("cantidad", 0) > 0 for p in personal_compartido.values())
         st.session_state[completion_flag] = any_exclusive or any_shared
 
         flat_data = flatten_session_state(st.session_state)
@@ -137,11 +143,11 @@ def render():
                 st.session_state.section_index += 1
                 st.rerun()
         else:
-            st.error("❌ Error al guardar los datos. Intente nuevamente.")
+            st.error("❌ Error al guardar los datos. Verifique conexión e intente nuevamente.")
 
-    # ───────────────────────────
-    # Visualización de Datos Guardados
-    # ───────────────────────────
+    # ─────────────────────────────
+    # Ver datos guardados
+    # ─────────────────────────────
 
     with st.expander("🔍 Ver Personal Exclusivo guardado"):
         st.write(st.session_state.get(prefix_excl + "data", {}))
