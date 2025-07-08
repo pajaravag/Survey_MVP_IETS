@@ -1,8 +1,10 @@
 import streamlit as st
 from PIL import Image
-import gspread
 
-# Section modules
+# ──────────────────────────────────────────────
+# Import Modules
+# ──────────────────────────────────────────────
+
 from sections import (
     identification, general_info, processes, donors_recipients,
     infrastructure, supplies, staff, utilities,
@@ -11,19 +13,20 @@ from sections import (
 
 from utils.state_manager import (
     compute_progress,
-    is_section_completed,
     flatten_session_state
 )
 
 from utils.sheet_io import (
-    load_data_by_ips_id,
+    load_existing_data,
     append_or_update_row
 )
 
-# Page setup
+# ──────────────────────────────────────────────
+# Page Configuration
+# ──────────────────────────────────────────────
+
 st.set_page_config(page_title="Encuesta BLH", layout="wide")
 
-# Header with logo
 col_logo, col_title = st.columns([1, 5])
 with col_logo:
     st.image("assets/Logo.png", width=100)
@@ -32,94 +35,129 @@ with col_title:
     st.title("Formulario para Bancos de Leche Humana (BLH)")
     st.markdown("Complete cada sección. Puede guardar su progreso y continuar más tarde.")
 
-# Section list
+# ──────────────────────────────────────────────
+# Section Definitions
+# ──────────────────────────────────────────────
+
 section_definitions = [
-    {"label": "1. Datos Generales", "key": "datos_generales", "render": general_info.render},
-    {"label": "2. Procesos Estandarizados", "key": "procesos_realizados", "render": processes.render},
-    {"label": "3. Donantes y Receptores", "key": "donantes_receptores", "render": donors_recipients.render},
-    {"label": "4. Infraestructura y Equipos", "key": "infraestructura_equipos", "render": infrastructure.render},
-    {"label": "5. Insumos Mensuales", "key": "insumos_mensuales", "render": supplies.render},
-    {"label": "6. Personal Asignado", "key": "personal_exclusivo", "render": staff.render},
-    {"label": "7. Servicios Públicos", "key": "servicios_publicos", "render": utilities.render},
-    {"label": "8. Transporte y Recolección", "key": "transporte_modalidades", "render": transport.render},
-    {"label": "9. Eficiencia y Calidad", "key": "calidad_seguridad", "render": quality.render},
-    {"label": "10. Depreciación e Impuestos", "key": "depreciacion", "render": depreciation.render}
+    {"label": "1. Datos Generales", "key": "datos_generales__completed", "render": general_info.render},
+    {"label": "2. Procesos Estandarizados", "key": "procesos_realizados__completed", "render": processes.render},
+    {"label": "3. Donantes y Receptores", "key": "donantes_receptores__completed", "render": donors_recipients.render},
+    {"label": "4. Infraestructura y Equipos", "key": "infraestructura_equipos__completed", "render": infrastructure.render},
+    {"label": "5. Insumos Mensuales", "key": "insumos_mensuales__completed", "render": supplies.render},
+    {"label": "6. Personal Asignado", "key": "personal_exclusivo__completed", "render": staff.render},
+    {"label": "7. Servicios Públicos", "key": "servicios_publicos__completed", "render": utilities.render},
+    {"label": "8. Transporte y Recolección", "key": "transporte_modalidades__completed", "render": transport.render},
+    {"label": "9. Eficiencia y Calidad", "key": "calidad_seguridad__completed", "render": quality.render},
+    {"label": "10. Depreciación e Impuestos", "key": "depreciacion__completed", "render": depreciation.render},
 ]
 
-# Show identification first
+# ──────────────────────────────────────────────
+# Identification Section
+# ──────────────────────────────────────────────
+
 identification.render()
 
 if "identificacion" not in st.session_state:
-    st.warning("⚠️ Complete la identificación para continuar.")
+    st.warning("⚠️ Por favor complete la identificación para continuar.")
     st.stop()
 
-# Restore existing Google Sheets data if needed
-if "datos_generales" not in st.session_state and "identificacion" in st.session_state:
-    ips_id = st.session_state["identificacion"].get("ips_id")
-    if ips_id:
-        existing_data = load_data_by_ips_id(ips_id)
-        if existing_data:
-            st.session_state.update(existing_data)
-            st.info(f"📂 Datos restaurados para IPS: {ips_id}")
+ips_id = st.session_state["identificacion"].get("ips_id", "").strip().lower()
+already_loaded = st.session_state.get("data_loaded", False)
 
-# Initialize state
+if ips_id and not already_loaded:
+    existing_data = load_existing_data(ips_id)
+    if existing_data:
+        widget_keys_to_skip = {"ips_id_input", "correo_responsable_input", "nombre_responsable_input"}
+        safe_data = {k: v for k, v in existing_data.items() if k not in widget_keys_to_skip and not k.startswith("FormSubmitter:")}
+        st.session_state.update(safe_data)
+        st.info(f"📂 Datos previos restaurados para IPS: `{ips_id}`.")
+    else:
+        st.info("📝 No se encontraron datos previos para esta IPS.")
+
+    st.session_state["data_loaded"] = True
+    st.rerun()
+
+# ──────────────────────────────────────────────
+# Navigation State Initialization
+# ──────────────────────────────────────────────
+
 if "section_index" not in st.session_state:
     st.session_state.section_index = 0
-if "navigation_triggered" not in st.session_state:
-    st.session_state.navigation_triggered = False
 
-# Sidebar — only set section if user manually changes it
+# ──────────────────────────────────────────────
+# Sidebar Navigation
+# ──────────────────────────────────────────────
+
 with st.sidebar:
     st.markdown("### Navegación rápida")
+
     labels_with_status = [
-        f"{'✅' if is_section_completed(st.session_state, s['key']) else '🔲'} {s['label']}"
-        for s in section_definitions
+        f"{'✅' if st.session_state.get(section['key'], False) else '🔲'} {section['label']}"
+        for section in section_definitions
     ]
-    current_label = f"{'✅' if is_section_completed(st.session_state, section_definitions[st.session_state.section_index]['key']) else '🔲'} {section_definitions[st.session_state.section_index]['label']}"
 
-    selected_label = st.selectbox("Ir a sección", labels_with_status, index=labels_with_status.index(current_label))
+    selected_label = st.selectbox("Ir a sección", labels_with_status, index=st.session_state.section_index)
+    selected_index = next(i for i, s in enumerate(section_definitions) if s["label"] in selected_label)
 
-    if not st.session_state.navigation_triggered:
-        selected_clean = selected_label[2:].strip()
-        selected_index = next(i for i, s in enumerate(section_definitions) if s["label"] == selected_clean)
+    if selected_index != st.session_state.section_index:
         st.session_state.section_index = selected_index
+        st.rerun()
 
-# Reset navigation flag after rerun (must come after selectbox)
-st.session_state.navigation_triggered = False
+# ──────────────────────────────────────────────
+# Render Current Section
+# ──────────────────────────────────────────────
 
-# Render current section
 current_section = section_definitions[st.session_state.section_index]
 st.subheader(current_section["label"])
 current_section["render"]()
 
-# Progress bar
-tracked_keys = [s["key"] for s in section_definitions]
-filled, percent = compute_progress(st.session_state, tracked_keys)
-st.progress(percent, text=f"{filled} de {len(tracked_keys)} secciones completadas")
+# ──────────────────────────────────────────────
+# Progress Bar
+# ──────────────────────────────────────────────
 
-# Navigation buttons
+completion_flags = [s["key"] for s in section_definitions]
+completed_count, progress_percent = compute_progress(st.session_state, completion_flags)
+
+st.progress(progress_percent, text=f"{completed_count} de {len(completion_flags)} secciones completadas")
+
+# ──────────────────────────────────────────────
+# Navigation Buttons
+# ──────────────────────────────────────────────
+
 col1, col2, _ = st.columns([1, 1, 6])
+
 with col1:
     if st.session_state.section_index > 0:
         if st.button("⬅️ Sección anterior"):
             st.session_state.section_index -= 1
-            st.session_state.navigation_triggered = True
             st.rerun()
 
 with col2:
     if st.session_state.section_index < len(section_definitions) - 1:
         if st.button("➡️ Siguiente sección"):
             st.session_state.section_index += 1
-            st.session_state.navigation_triggered = True
             st.rerun()
 
-# Save full survey
+# ──────────────────────────────────────────────
+# Final Section Message & Global Save
+# ──────────────────────────────────────────────
+
+if st.session_state.section_index == len(section_definitions) - 1:
+    st.success("🎉 Ha llegado al final del formulario.")
+    st.markdown("Puede revisar cualquier sección usando el menú lateral o los botones de navegación.")
+    if st.button("⬅️ Volver al inicio"):
+        st.session_state.section_index = 0
+        st.rerun()
+
 st.markdown("---")
 st.markdown("### Guardar encuesta completa")
+
 if st.button("📤 Guardar encuesta completa como archivo CSV y Google Sheets"):
     flat_data = flatten_session_state(st.session_state)
     success = append_or_update_row(flat_data)
+    ips_name = st.session_state.get("identificacion", {}).get("ips_id", "IPS desconocida")
     if success:
-        st.success("✅ Encuesta guardada correctamente en Google Sheets.")
+        st.success(f"✅ Encuesta de `{ips_name}` guardada exitosamente.")
     else:
-        st.error("❌ No se pudo guardar en Google Sheets.")
+        st.error("❌ Error al guardar la encuesta. Por favor intente nuevamente.")

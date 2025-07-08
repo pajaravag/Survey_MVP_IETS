@@ -2,49 +2,112 @@ import streamlit as st
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
 
+# 🔐 Safe conversion helpers
+def safe_float(value, default=0.0):
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
+
+def safe_int(value, default=0):
+    try:
+        return int(float(value))
+    except (ValueError, TypeError):
+        return default
+
 def render():
     st.header("10. Depreciación e Impuestos")
-    st.markdown("Ingrese los valores relacionados con la depreciación de equipos y presupuesto de mantenimiento del BLH.")
 
-    prev_data = st.session_state.get("depreciacion", {})
+    st.markdown("""
+    ### 🏗️ Instrucciones:
+    Registre la información relacionada con la **depreciación de los equipos** y el **presupuesto de mantenimiento anual** del BLH:
+
+    - **Depreciación mensual** (en COP).
+    - **Porcentaje anual de depreciación**.
+    - **Presupuesto anual de mantenimiento** (en COP).
+
+    Si algún valor no aplica, registre **0**.
+    """)
+
+    prefix = "depreciacion__"
+    completion_flag = prefix + "completed"
+    prev_data = st.session_state.get(prefix + "data", {})
+
+    # ─────────────────────────────────
+    # Inputs con valores previos
+    # ─────────────────────────────────
 
     valor_mensual = st.number_input(
-        "¿Cuánto es el rubro mensual asociado a la depreciación de los equipos del BLH? ($ COP)",
+        "Valor mensual asociado a la depreciación ($ COP/mes)",
         min_value=0.0, step=10000.0,
-        value=prev_data.get("valor_mensual_cop", 0.0),
-        key="depreciacion_mensual"
+        value=safe_float(prev_data.get("valor_mensual_cop", 0.0)),
+        key=prefix + "valor_mensual"
     )
 
     porcentaje = st.slider(
-        "¿Cuál es el porcentaje de depreciación promedio de los equipos del BLH?",
-        min_value=0, max_value=100,
-        value=prev_data.get("porcentaje_depreciacion", 20),
-        step=1,
-        key="depreciacion_pct"
+        "Porcentaje de depreciación promedio (%)",
+        min_value=0, max_value=100, step=1,
+        value=safe_int(prev_data.get("porcentaje_depreciacion", 20)),
+        key=prefix + "porcentaje"
     )
 
     mantenimiento_anual = st.number_input(
-        "¿Cuánto dinero dispone para el mantenimiento anual de los equipos del BLH? ($ COP)",
+        "Presupuesto anual de mantenimiento ($ COP/año)",
         min_value=0.0, step=10000.0,
-        value=prev_data.get("mantenimiento_anual_cop", 0.0),
-        key="mantenimiento_anual"
+        value=safe_float(prev_data.get("mantenimiento_anual_cop", 0.0)),
+        key=prefix + "mantenimiento"
     )
 
-    if st.button("💾 Guardar sección y finalizar"):
-        st.session_state["depreciacion"] = {
+    # ─────────────────────────────────
+    # Automatic Progress Flag (✅ Real-time)
+    # ─────────────────────────────────
+
+    st.session_state[completion_flag] = any([
+        valor_mensual > 0,
+        porcentaje > 0,
+        mantenimiento_anual > 0
+    ])
+
+    # ─────────────────────────────────
+    # Save Button
+    # ─────────────────────────────────
+
+    if st.button("💾 Guardar sección - Depreciación e Impuestos"):
+        st.session_state[prefix + "data"] = {
             "valor_mensual_cop": valor_mensual,
             "porcentaje_depreciacion": porcentaje,
             "mantenimiento_anual_cop": mantenimiento_anual
         }
 
+        # Confirm completion again just in case
+        st.session_state[completion_flag] = any([
+            valor_mensual > 0,
+            porcentaje > 0,
+            mantenimiento_anual > 0
+        ])
+
         flat_data = flatten_session_state(st.session_state)
         success = append_or_update_row(flat_data)
 
         if success:
-            st.success("✅ Datos de depreciación registrados y guardados correctamente en Google Sheets.")
-            st.balloons()  # 🎈 Optional celebratory touch
+            st.success("✅ Datos de depreciación guardados correctamente en Google Sheets.")
+            st.balloons()
+            st.markdown("🎯 ¡Felicidades! Ha completado todas las secciones del formulario.")
+            st.markdown("Puede revisar cualquier sección usando el menú lateral o cerrar la aplicación.")
+
             if "section_index" in st.session_state:
-                st.session_state.section_index = 9  # Stay on this section or show summary
+                st.session_state.section_index = 9
                 st.rerun()
         else:
-            st.error("❌ Error al guardar los datos.")
+            st.error("❌ Error al guardar los datos. Verifique su conexión o intente nuevamente.")
+
+    # ─────────────────────────────────
+    # Review Block
+    # ─────────────────────────────────
+
+    with st.expander("🔍 Ver datos guardados"):
+        st.write({
+            "Valor mensual (COP)": valor_mensual,
+            "Porcentaje depreciación (%)": porcentaje,
+            "Presupuesto mantenimiento (COP)": mantenimiento_anual
+        })

@@ -1,19 +1,27 @@
-# 🔐 Secrets and configs
-.streamlit/secrets.toml          # ✅ Prevents leaking Google credentials
+# 🔐 Streamlit Secrets & Configs
+.streamlit/secrets.toml
 
-# 🐍 Python internals
-__pycache__/                     # ✅ Ignores Python bytecode cache
-*.pyc                            # ✅ Prevents compiled junk from showing up
+# 🐍 Python Bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
 
-# 💻 macOS system files
-.DS_Store                        # ✅ Avoids clutter from Finder
+# 💻 macOS System Files
+.DS_Store
 
-# 📄 Jupyter Notebook checkpoints (if used)
-.ipynb_checkpoints/             # ✅ Keeps repo clean if any .ipynb files are used
+# 📄 Jupyter Notebooks (Optional)
+.ipynb_checkpoints/
 
-# 🤫 Environment configs (if used)
+# 🤫 Environment Variables (Optional for future Docker/AWS)
 .env
-.env.*                           # ✅ Future-proof for `.env.dev`, `.env.local`, etc.
+.env.*
 
-# ❌ Local virtual environment
-survey_app/                      # ✅ Prevents pushing venv (confirmed from your screenshot)
+# ❌ Local Virtual Environment (named `survey_app` in your case)
+survey_app/
+
+# 📊 Local Response Files (your `data/responses` folder)
+data/responses/*.csv
+
+# 📄 Optional: VSCode settings (if used)
+.vscode/

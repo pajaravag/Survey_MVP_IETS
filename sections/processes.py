@@ -1,7 +1,17 @@
 import streamlit as st
+from utils.sheet_io import append_or_update_row
+from utils.state_manager import flatten_session_state
 
 def render():
-    st.header("2. Procesos Estandarizados realizados en el BLH")
+    st.markdown("### 2️⃣ Procesos Estandarizados")
+
+    st.info("""
+    Por favor seleccione todos los **procesos estandarizados** que actualmente se realizan en su Banco de Leche Humana (BLH).
+    """)
+
+    prefix = "procesos_realizados__"
+    completion_flag = prefix + "completed"
+    procesos_key = prefix + "data"
 
     procesos = [
         "Captación, Selección y Acompañamiento de Usuarias",
@@ -18,24 +28,37 @@ def render():
         "Seguimiento y Trazabilidad"
     ]
 
-    # Load previous selections if any
-    prev_selected = st.session_state.get("procesos_realizados", [])
+    prev_selected = st.session_state.get(procesos_key, [])
+
+    # ✅ Live check: ensure completion flag is always up to date
+    st.session_state[completion_flag] = bool(prev_selected)
 
     selected = []
     with st.form("procesos_form"):
-        st.markdown("Marque los procesos que realiza su institución:")
+        st.markdown("#### ✅ Seleccione los procesos realizados:")
 
-        for p in procesos:
-            checked = p in prev_selected
-            if st.checkbox(p, value=checked, key=f"chk_{p}"):
-                selected.append(p)
+        for proceso in procesos:
+            checked = proceso in prev_selected
+            if st.checkbox(proceso, value=checked, key=f"chk_{proceso}"):
+                selected.append(proceso)
 
-        guardar = st.form_submit_button("💾 Guardar sección y continuar")
+        guardar = st.form_submit_button("💾 Guardar sección - Procesos")
 
     if guardar:
-        st.session_state["procesos_realizados"] = selected
-        st.success("✅ Procesos registrados correctamente.")
+        st.session_state[procesos_key] = selected
+        st.session_state[completion_flag] = bool(selected)
 
-        if "section_index" in st.session_state and st.session_state.section_index < 9:
-            st.session_state.section_index += 1
-            st.rerun()
+        flat_data = flatten_session_state(st.session_state)
+        success = append_or_update_row(flat_data)
+
+        if success:
+            st.success("✅ Procesos guardados correctamente en Google Sheets.")
+            if "section_index" in st.session_state and st.session_state.section_index < 9:
+                st.session_state.section_index += 1
+                st.session_state.navigation_triggered = True
+                st.rerun()
+        else:
+            st.error("❌ Error al guardar los datos. Intente nuevamente.")
+
+    with st.expander("🔍 Ver procesos seleccionados"):
+        st.write(st.session_state.get(procesos_key, []))
