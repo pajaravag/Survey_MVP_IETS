@@ -15,20 +15,17 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError):
         return default
 
+
 def render():
-    st.header("4. Infraestructura y Equipos")
+    st.header("4. Infraestructura y Equipos del Banco de Leche Humana")
 
     st.markdown("""
-    ### 🏥 Instrucciones:
-    Por favor registre los **equipos e infraestructura** disponibles en las diferentes áreas del Banco de Leche Humana (BLH).
+    > ℹ️ **Instrucciones:**  
+    Registre los **equipos e infraestructura** utilizados en su Banco de Leche Humana (BLH) por cada área funcional.  
+    Si un equipo no aplica, registre **0** en cantidad.  
+    Si el equipo es **compartido**, indique el porcentaje aproximado de uso para el BLH.
 
-    Para cada equipo indique:
-    - La **cantidad disponible**.
-    - Si es **exclusivo del BLH** o **compartido**.
-    - El **porcentaje de uso** para el BLH (si es compartido).
-    - El **costo promedio por unidad** en pesos colombianos (COP).
-
-    Si un equipo no aplica, registre **0**.
+    > 🔐 **Nota:** La información recopilada está protegida por **Habeas Data** (Ley 1581 de 2012).
     """)
 
     # ──────────────────────────────────────────────
@@ -40,7 +37,7 @@ def render():
     resultados = st.session_state.get(prefix + "data", {})
 
     # ──────────────────────────────────────────────
-    # Areas and Equipments Definition
+    # Áreas y Equipos Definidos
     # ──────────────────────────────────────────────
 
     secciones = {
@@ -51,7 +48,7 @@ def render():
     }
 
     # ──────────────────────────────────────────────
-    # Inputs per Area and Equipment
+    # Entrada de datos por Área y Equipo
     # ──────────────────────────────────────────────
 
     for area, equipos in secciones.items():
@@ -59,29 +56,32 @@ def render():
             area_result = resultados.get(area, {})
             for eq in equipos:
                 eq_data = area_result.get(eq, {})
+
                 st.markdown(f"**{eq}**")
 
                 cantidad = st.number_input(
-                    f"Cantidad de {eq}",
+                    f"Cantidad disponible de {eq}",
                     min_value=0, step=1,
                     value=safe_int(eq_data.get("cantidad", 0)),
                     key=f"{area}_{eq}_cantidad"
                 )
 
                 exclusivo = st.radio(
-                    f"¿{eq} es exclusivo del BLH?",
+                    f"¿{eq} es de uso exclusivo del BLH?",
                     ["Sí", "No"],
                     index=0 if eq_data.get("exclusivo", "Sí") == "Sí" else 1,
                     key=f"{area}_{eq}_exclusivo",
                     horizontal=True
                 )
 
-                uso_pct = 100 if exclusivo == "Sí" else st.slider(
-                    "Porcentaje de uso para BLH (%)",
-                    min_value=0, max_value=100, step=1,
-                    value=safe_int(eq_data.get("porcentaje_uso", 0)),
-                    key=f"{area}_{eq}_porcentaje"
-                )
+                uso_pct = 100
+                if exclusivo == "No":
+                    uso_pct = st.slider(
+                        f"Porcentaje de uso para el BLH (%) de {eq}",
+                        min_value=0, max_value=100, step=1,
+                        value=safe_int(eq_data.get("porcentaje_uso", 0)),
+                        key=f"{area}_{eq}_porcentaje"
+                    )
 
                 costo = st.number_input(
                     f"Costo promedio por unidad de {eq} ($ COP)",
@@ -100,13 +100,13 @@ def render():
                 }
 
     # ──────────────────────────────────────────────
-    # Save Button & Completion Logic
+    # Guardado y Validación
     # ──────────────────────────────────────────────
 
-    if st.button("💾 Guardar sección - Infraestructura"):
+    if st.button("💾 Guardar sección - Infraestructura y Equipos"):
         st.session_state[prefix + "data"] = resultados
 
-        # Completion is set to True if at least one item has cantidad > 0
+        # Validación mínima: al menos un equipo con cantidad > 0
         has_any_data = any(
             any(item.get("cantidad", 0) > 0 for item in area_data.values())
             for area_data in resultados.values()
@@ -118,7 +118,7 @@ def render():
         success = append_or_update_row(flat_data)
 
         if success:
-            st.success("✅ Datos de infraestructura guardados correctamente en Google Sheets.")
+            st.success("✅ Datos de infraestructura guardados exitosamente.")
             if "section_index" in st.session_state and st.session_state.section_index < 9:
                 st.session_state.section_index += 1
                 st.rerun()
@@ -126,7 +126,7 @@ def render():
             st.error("❌ Error al guardar los datos. Verifique su conexión o intente nuevamente.")
 
     # ──────────────────────────────────────────────
-    # View Saved Data
+    # Expander para visualización de datos
     # ──────────────────────────────────────────────
 
     with st.expander("🔍 Ver resumen de datos guardados"):

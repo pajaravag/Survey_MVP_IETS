@@ -9,15 +9,18 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError):
         return default
 
+
 def render():
-    st.header("7. Servicios Públicos")
+    st.header("7. Servicios Públicos del Banco de Leche Humana")
 
     st.markdown("""
-    ### 💡 Instrucciones:
-    Registre el **costo mensual promedio** de los servicios públicos asociados al funcionamiento del Banco de Leche Humana (BLH).
+    > ℹ️ **Instrucciones:**  
+    Por favor registre el **costo mensual promedio** en pesos colombianos (COP) de los servicios públicos vinculados al funcionamiento del Banco de Leche Humana (BLH).  
+    Si un servicio no aplica o no se incurre en costo, registre **0**.
 
-    - Si algún servicio no aplica, registre **0**.
-    - Los datos son claves para el análisis de costos operativos del BLH.
+    Estos datos permitirán estimar los costos operativos del BLH para su análisis financiero.
+
+    > 🔐 **Nota:** La información está protegida conforme a la Ley 1581 de 2012 (**Habeas Data**).
     """)
 
     prefix = "servicios_publicos__"
@@ -32,13 +35,15 @@ def render():
         "Telefonía fija e internet"
     ]
 
-    # Prepare dictionary to capture current inputs
     current_results = {}
 
-    # 🔹 Render inputs
+    # ──────────────────────────────────────────────
+    # Render Inputs por Servicio
+    # ──────────────────────────────────────────────
+
     for servicio in servicios:
         costo = st.number_input(
-            f"{servicio} ($ COP/mes)",
+            f"💰 {servicio} (costo mensual en $ COP)",
             min_value=0.0,
             step=1000.0,
             value=safe_float(stored_data.get(servicio, 0.0)),
@@ -46,26 +51,36 @@ def render():
         )
         current_results[servicio] = costo
 
-    # 🔍 Live Completion Flag: always updated on every render
+    # ──────────────────────────────────────────────
+    # Validación para Completitud
+    # ──────────────────────────────────────────────
+
     has_data = any(value > 0 for value in current_results.values())
     st.session_state[completion_flag] = has_data
 
-    # 🔹 Save Button
+    # ──────────────────────────────────────────────
+    # Botón de Guardado con Feedback
+    # ──────────────────────────────────────────────
+
     if st.button("💾 Guardar sección - Servicios Públicos"):
         st.session_state[data_key] = current_results
-        st.session_state[completion_flag] = any(value > 0 for value in current_results.values())  # Recheck after save
+        st.session_state[completion_flag] = any(value > 0 for value in current_results.values())
 
         flat_data = flatten_session_state(st.session_state)
         success = append_or_update_row(flat_data)
 
         if success:
-            st.success("✅ Datos guardados correctamente en Google Sheets.")
+            st.success("✅ Datos de servicios públicos guardados exitosamente.")
             if "section_index" in st.session_state and st.session_state.section_index < 9:
                 st.session_state.section_index += 1
+                st.session_state.navigation_triggered = True
                 st.rerun()
         else:
-            st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
+            st.error("❌ Error al guardar los datos. Por favor verifique su conexión e intente nuevamente.")
 
-    # 🔹 Review Data
-    with st.expander("🔍 Ver datos guardados en esta sección"):
+    # ──────────────────────────────────────────────
+    # Expander: Visualización de Datos Guardados
+    # ──────────────────────────────────────────────
+
+    with st.expander("🔍 Ver resumen de datos guardados"):
         st.write(st.session_state.get(data_key, current_results))

@@ -15,19 +15,16 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError):
         return default
 
+
 def render():
     st.header("3. Donantes y Receptores")
 
     st.markdown("""
-    ### 🍼 Instrucciones:
-    Por favor registre información sobre:
+    > ℹ️ **Instrucciones:**  
+    Registre la información sobre donantes, volumen recolectado y receptores.  
+    Si algún dato no aplica a su institución, por favor registre **0**.
 
-    - El número promedio de donantes activas y el volumen mensual de leche recolectada.
-    - El origen de la leche recolectada (debe sumar 100%).
-    - Si su institución realiza pasteurización, indique el volumen correspondiente.
-    - El número de receptores y el volumen mensual de leche distribuida.
-
-    Por favor utilice **mililitros (ml)** para todas las medidas de volumen.
+    > 🔐 **Nota:** La información está protegida por el derecho fundamental de **Habeas Data** (Ley 1581 de 2012).
     """)
 
     prefix = "donantes_receptores__"
@@ -36,29 +33,42 @@ def render():
 
     with st.form("donantes_form"):
 
-        # 🔹 Donantes activas y volumen recolectado
+        # ──────────────────────────────────────────────
+        # Donantes activas y volumen recolectado
+        # ──────────────────────────────────────────────
+
         donantes_mes = st.number_input(
-            "Número promedio de donantes activas por mes",
+            "👥 Número promedio de donantes activas por mes",
             min_value=0,
             value=safe_int(data.get(prefix + "donantes_mes", 0))
         )
 
         volumen_mes_ml = st.number_input(
-            "Volumen promedio de leche recolectada por mes (ml)",
+            "🍼 Volumen promedio de leche recolectada por mes (ml)",
             min_value=0.0,
             value=safe_float(data.get(prefix + "volumen_mes", 0.0)),
             step=10.0
         )
 
-        # 🔹 Porcentaje de origen
-        st.markdown("### Porcentaje de origen de la leche recolectada *(Debe sumar 100%)*")
-        pct_inst = st.slider("Recolectada en institución (%)", 0, 100, value=safe_int(data.get(prefix + "pct_inst", 0)))
-        pct_dom = st.slider("Recolectada en domicilio de la donante (%)", 0, 100, value=safe_int(data.get(prefix + "pct_dom", 0)))
-        pct_centros = st.slider("Recolectada en centros de recolección (%)", 0, 100, value=safe_int(data.get(prefix + "pct_centros", 0)))
+        # ──────────────────────────────────────────────
+        # Porcentaje de origen de la leche
+        # ──────────────────────────────────────────────
 
-        # 🔹 Nueva pregunta: ¿Realiza pasteurización?
+        st.markdown("### 📊 Porcentaje de origen de la leche recolectada *(la suma debe ser 100%)*")
+
+        pct_inst = st.slider("🏥 Recolectada en la institución (%)", 0, 100, value=safe_int(data.get(prefix + "pct_inst", 0)))
+        pct_dom = st.slider("🏠 Recolectada en domicilio de la donante (%)", 0, 100, value=safe_int(data.get(prefix + "pct_dom", 0)))
+        pct_centros = st.slider("🏬 Recolectada en centros de recolección externos (%)", 0, 100, value=safe_int(data.get(prefix + "pct_centros", 0)))
+
+        total_pct = pct_inst + pct_dom + pct_centros
+        st.info(f"🔢 **Total actual:** {total_pct} % (debe ser 100%)")
+
+        # ──────────────────────────────────────────────
+        # Pasteurización (condicional)
+        # ──────────────────────────────────────────────
+
         pasteuriza = st.radio(
-            "¿En su institución se realiza la pasteurización de la leche humana?",
+            "🧪 ¿Se realiza pasteurización de la leche en su institución?",
             ["Sí", "No"],
             index=0 if data.get(prefix + "pasteuriza", "No") == "Sí" else 1,
             horizontal=True
@@ -73,33 +83,42 @@ def render():
                 step=10.0
             )
 
-        # 🔹 Receptores y distribución
+        # ──────────────────────────────────────────────
+        # Receptores y volumen distribuido
+        # ──────────────────────────────────────────────
+
         receptores_mes = st.number_input(
-            "Número promedio de receptores activos por mes",
+            "👶 Número promedio de receptores activos por mes",
             min_value=0,
             value=safe_int(data.get(prefix + "receptores_mes", 0))
         )
 
         leche_distribuida_ml = st.number_input(
-            "Volumen promedio de leche distribuida por mes (ml)",
+            "🚚 Volumen promedio de leche distribuida por mes (ml)",
             min_value=0.0,
             value=safe_float(data.get(prefix + "leche_distribuida", 0.0)),
             step=10.0
         )
 
+        # ──────────────────────────────────────────────
+        # Submit Button
+        # ──────────────────────────────────────────────
+
         submitted = st.form_submit_button("💾 Guardar sección - Donantes y Receptores")
 
-    # ──────────────────────────────────────────
-    # Save Data and Validate Completion
-    # ──────────────────────────────────────────
+    # ──────────────────────────────────────────────
+    # Validación y guardado
+    # ──────────────────────────────────────────────
 
     if submitted:
-        total_pct = pct_inst + pct_dom + pct_centros
-
+        errors = []
         if total_pct != 100:
-            st.warning(f"⚠️ La suma de los porcentajes debe ser 100% (actual: {total_pct}%).")
+            errors.append(f"La suma de los porcentajes debe ser 100% (actual: {total_pct}%).")
+
+        if errors:
+            for e in errors:
+                st.warning(f"⚠️ {e}")
         else:
-            # Save all values
             st.session_state[prefix + "donantes_mes"] = donantes_mes
             st.session_state[prefix + "volumen_mes"] = volumen_mes_ml
             st.session_state[prefix + "pct_inst"] = pct_inst
@@ -110,23 +129,22 @@ def render():
             st.session_state[prefix + "receptores_mes"] = receptores_mes
             st.session_state[prefix + "leche_distribuida"] = leche_distribuida_ml
 
-            # Set completion flag: minimal check—expandable
             st.session_state[completion_flag] = True
 
             flat_data = flatten_session_state(st.session_state)
             success = append_or_update_row(flat_data)
 
             if success:
-                st.success("✅ Datos de donantes y receptores guardados correctamente en Google Sheets.")
+                st.success("✅ Datos de donantes y receptores guardados exitosamente.")
                 if "section_index" in st.session_state and st.session_state.section_index < 9:
                     st.session_state.section_index += 1
                     st.rerun()
             else:
                 st.error("❌ Error al guardar los datos. Intente nuevamente.")
 
-    # ──────────────────────────────────────────
-    # Display Saved Data
-    # ──────────────────────────────────────────
+    # ──────────────────────────────────────────────
+    # Expander para datos guardados
+    # ──────────────────────────────────────────────
 
     with st.expander("🔍 Ver datos guardados en esta sección"):
         st.write({
@@ -137,6 +155,7 @@ def render():
             "% En centros": safe_int(data.get(prefix + "pct_centros", 0)),
             "¿Realiza pasteurización?": data.get(prefix + "pasteuriza", "No"),
             "Volumen pasteurizada (ml)": safe_float(data.get(prefix + "volumen_pasteurizada", 0.0)),
-            "Receptores/mes": safe_int(data.get(prefix + "receptores_mes", 0)),
+            "Receptores activos/mes": safe_int(data.get(prefix + "receptores_mes", 0)),
             "Volumen distribuido (ml)": safe_float(data.get(prefix + "leche_distribuida", 0.0)),
+            "Total % Origen": total_pct
         })

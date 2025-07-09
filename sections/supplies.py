@@ -9,15 +9,21 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError):
         return default
 
+
 def render():
     st.header("5. Insumos Mensuales")
 
     st.markdown("""
-    ### 🧴 Instrucciones:
-    Por favor registre los **insumos mensuales** utilizados en el Banco de Leche Humana (BLH).
+    > ℹ️ **Instrucciones:**  
+    Registre los **insumos mensuales** utilizados en el Banco de Leche Humana (BLH).  
+    Para cada insumo indique:
+    - Unidad de medida
+    - Cantidad promedio mensual utilizada
+    - Costo promedio por unidad (en pesos COP)
 
-    - Registre unidad, cantidad y costo para cada insumo relevante.
-    - Si un insumo no aplica, puede dejarlo en cero o en blanco.
+    Si un insumo no aplica a su BLH, puede dejar los valores en **0** o en blanco.
+
+    > 🔐 **Nota:** La información está protegida conforme a la Ley 1581 de 2012 (Habeas Data).
     """)
 
     prefix = "insumos_mensuales__"
@@ -46,14 +52,10 @@ def render():
         "Otros": ["Otro 1", "Otro 2", "Otro 3"]
     }
 
-    # 🔍 Live validate flag (ensures preloaded data is respected)
-    has_data = any(
-        any(item.get("cantidad", 0) > 0 or item.get("costo", 0) > 0 for item in cat.values())
-        for cat in insumos_data.values()
-    )
-    st.session_state[completion_flag] = has_data
+    # ──────────────────────────────────────────────
+    # Render Inputs por Categoría e Insumo
+    # ──────────────────────────────────────────────
 
-    # 🔹 Render inputs
     for categoria, insumos in categorias.items():
         with st.expander(f"🔹 {categoria}"):
             cat_data = insumos_data.get(categoria, {})
@@ -85,21 +87,30 @@ def render():
                 if categoria not in insumos_data:
                     insumos_data[categoria] = {}
                 insumos_data[categoria][insumo] = {
-                    "unidad": unidad,
+                    "unidad": unidad.strip(),
                     "cantidad": cantidad,
                     "costo": costo
                 }
 
-    # 🔹 Save button
+    # ──────────────────────────────────────────────
+    # Cálculo de Completitud (💡 Corregido aquí)
+    # ──────────────────────────────────────────────
+
+    def check_has_data(data):
+        return any(
+            any(item.get("cantidad", 0) > 0 or item.get("costo", 0) > 0 for item in categoria.values())
+            for categoria in data.values()
+        )
+
+    st.session_state[completion_flag] = check_has_data(insumos_data)
+
+    # ──────────────────────────────────────────────
+    # Guardar Sección
+    # ──────────────────────────────────────────────
+
     if st.button("💾 Guardar sección - Insumos Mensuales"):
         st.session_state[insumos_key] = insumos_data
-
-        # Recalculate completion status based on updated data
-        has_data = any(
-            any(item.get("cantidad", 0) > 0 or item.get("costo", 0) > 0 for item in cat.values())
-            for cat in insumos_data.values()
-        )
-        st.session_state[completion_flag] = has_data
+        st.session_state[completion_flag] = check_has_data(insumos_data)
 
         flat_data = flatten_session_state(st.session_state)
         success = append_or_update_row(flat_data)
@@ -113,6 +124,9 @@ def render():
         else:
             st.error("❌ Error al guardar. Por favor intente nuevamente.")
 
-    # 🔍 View saved data
+    # ──────────────────────────────────────────────
+    # Resumen de Datos Guardados
+    # ──────────────────────────────────────────────
+
     with st.expander("🔍 Ver resumen de datos guardados"):
         st.write(insumos_data)

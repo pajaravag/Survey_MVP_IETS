@@ -21,15 +21,20 @@ def render():
     st.header("8. Transporte y Recolección de Leche Humana")
 
     st.markdown("""
-    ### 🚚 Instrucciones:
-    Registre la información sobre el **transporte y la recolección de leche** para su Banco de Leche Humana (BLH):
+    > ℹ️ **Instrucciones:**  
+    Registre la información relacionada con el **transporte y la recolección de leche humana** en su Banco de Leche Humana (BLH).  
+    - Indique los **lugares de recolección** utilizados.
+    - Informe si se usan **equipos especializados** para transporte.
+    - Registre los **costos promedio mensuales y distancias recorridas** en cada zona.
 
-    - Indique los **lugares de recolección** donde se reciben donaciones.
-    - Declare si se utilizan **equipos especializados** (termos, neveras, etc.).
-    - Ingrese los **costos promedio mensuales** y **datos detallados** para cada zona.
+    Si un dato no aplica, puede dejarlo en **0** o desmarcado.
 
-    Si un dato no aplica, deje en **0** o desmarcado.
+    > 🔐 **Nota:** La información está protegida conforme a la Ley 1581 de 2012 (**Habeas Data**).
     """)
+
+    # ──────────────────────────────────────────────
+    # Prefixes & Stored Data
+    # ──────────────────────────────────────────────
 
     prefix_modal = "transporte_modalidades__"
     prefix_equipos = "transporte_equipos__"
@@ -39,14 +44,14 @@ def render():
 
     modalidades_prev = st.session_state.get(prefix_modal + "data", {})
     equipos_prev = st.session_state.get(prefix_equipos + "data", {})
-    costos_prev = st.session_state.get(prefix_costos + "data", {})
     detalle_prev = st.session_state.get(prefix_detalle_zonas + "data", {})
 
-    # ─────────────────────────────
-    # Modalidades de recolección
-    # ─────────────────────────────
+    # ──────────────────────────────────────────────
+    # Modalidades de Recepción
+    # ──────────────────────────────────────────────
 
-    st.subheader("📍 Modalidades de recepción")
+    st.subheader("📍 Modalidades de recepción de leche")
+
     modalidades = {
         "En la institución donde se encuentra el BLH": st.checkbox(
             "Institución", value=modalidades_prev.get("En la institución donde se encuentra el BLH", False)),
@@ -56,13 +61,14 @@ def render():
             "Centros de recolección", value=modalidades_prev.get("En centros de recolección", False))
     }
 
-    # ─────────────────────────────
-    # Equipos de transporte
-    # ─────────────────────────────
+    # ──────────────────────────────────────────────
+    # Equipos de Transporte
+    # ──────────────────────────────────────────────
 
-    st.subheader("🚚 Equipos de transporte")
+    st.subheader("🚚 Equipos de transporte utilizados")
+
     usa_equipos = st.radio(
-        "¿Utiliza equipos especializados?",
+        "¿Utiliza equipos especializados para el transporte de leche?",
         ["Sí", "No"],
         index=0 if equipos_prev else 1,
         horizontal=True
@@ -84,7 +90,7 @@ def render():
                 key=f"{eq}_cantidad"
             )
             capacidad = st.number_input(
-                f"Capacidad por contenedor (litros)", min_value=0.0, step=0.5,
+                f"Capacidad promedio por unidad (litros)", min_value=0.0, step=0.5,
                 value=safe_float(eq_data.get("capacidad_litros", 0.0)),
                 key=f"{eq}_capacidad"
             )
@@ -99,9 +105,9 @@ def render():
                 "costo_unitario": costo
             }
 
-    # ─────────────────────────────
-    # Detalle por zona (Volumen, Km, Costo)
-    # ─────────────────────────────
+    # ──────────────────────────────────────────────
+    # Detalle por Zona
+    # ──────────────────────────────────────────────
 
     st.subheader("📊 Detalle por zona de recolección")
 
@@ -144,15 +150,19 @@ def render():
             "costo": costo_zona
         }
 
-    # ─────────────────────────────
-    # Guardado y Progreso
-    # ─────────────────────────────
+    # ──────────────────────────────────────────────
+    # Validación de Completitud
+    # ──────────────────────────────────────────────
 
     modalities_filled = any(modalidades.values())
     details_filled = any(v.get("volumen_ml", 0) > 0 or v.get("km", 0) > 0 or v.get("costo", 0) > 0 for v in detalle_zonas.values())
     equipment_filled = any(eq.get("cantidad", 0) > 0 for eq in equipos_data.values()) if usa_equipos == "Sí" else False
 
     st.session_state[completion_flag] = modalities_filled or details_filled or equipment_filled
+
+    # ──────────────────────────────────────────────
+    # Guardado y Progreso
+    # ──────────────────────────────────────────────
 
     if st.button("💾 Guardar sección - Transporte y Recolección"):
         st.session_state[prefix_modal + "data"] = modalidades
@@ -163,17 +173,22 @@ def render():
         success = append_or_update_row(flat_data)
 
         if success:
-            st.success("✅ Datos guardados correctamente en Google Sheets.")
+            st.success("✅ Datos de transporte y recolección guardados correctamente.")
             if "section_index" in st.session_state and st.session_state.section_index < 9:
                 st.session_state.section_index += 1
+                st.session_state.navigation_triggered = True
                 st.rerun()
         else:
-            st.error("❌ Error al guardar. Intente nuevamente.")
+            st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
 
-    with st.expander("🔍 Ver modalidades guardadas"):
+    # ──────────────────────────────────────────────
+    # Visualización de Datos Guardados
+    # ──────────────────────────────────────────────
+
+    with st.expander("🔍 Ver modalidades de recolección guardadas"):
         st.write(modalidades)
 
-    with st.expander("🔍 Ver equipos guardados"):
+    with st.expander("🔍 Ver equipos de transporte guardados"):
         st.write(equipos_data if usa_equipos == "Sí" else {})
 
     with st.expander("🔍 Ver detalle de zonas guardado"):

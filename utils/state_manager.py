@@ -3,11 +3,25 @@ import pandas as pd
 from datetime import datetime
 
 
+# ──────────────────────────────────────────────
+# 1️⃣ Aplanar estado de sesión para exportación
+# ──────────────────────────────────────────────
+
 def flatten_session_state(d, parent_key='', sep='__'):
     """
-    Recursively flattens a nested session_state dictionary for CSV or Sheets export.
-    Lists are joined into comma-separated strings.
-    Booleans are converted to "Sí" / "No" for better readability.
+    Aplana recursivamente un diccionario anidado (ej: st.session_state) para exportación en CSV o Google Sheets.
+
+    - Convierte listas en cadenas separadas por comas.
+    - Convierte booleanos en "Sí" / "No" para mejor legibilidad.
+    - Mantiene compatibilidad con tipos simples.
+
+    Args:
+        d (dict): Diccionario aplanar (ej: st.session_state).
+        parent_key (str): Prefijo para claves anidadas.
+        sep (str): Separador entre niveles de claves.
+
+    Returns:
+        dict: Diccionario plano listo para exportación.
     """
     items = {}
     for k, v in d.items():
@@ -23,24 +37,38 @@ def flatten_session_state(d, parent_key='', sep='__'):
     return items
 
 
+# ──────────────────────────────────────────────
+# 2️⃣ Guardar respuestas en CSV (local)
+# ──────────────────────────────────────────────
+
 def save_response_to_csv(session_state, output_dir="data/responses"):
     """
-    Saves session data to:
-    - A unique timestamped CSV
-    - A cumulative master CSV (appended)
+    Guarda los datos del session_state en:
+    1. Un archivo CSV único con marca de tiempo.
+    2. Un archivo maestro acumulativo (responses_master.csv).
+
+    Args:
+        session_state (dict): Estado actual de la encuesta.
+        output_dir (str): Carpeta donde se guardarán los archivos.
+
+    Retorna:
+        str: Ruta del archivo único generado.
     """
     os.makedirs(output_dir, exist_ok=True)
 
     flat_data = flatten_session_state(session_state)
     df = pd.DataFrame([flat_data])
 
-    ips_id = flat_data.get("identificacion__ips_id", "anonimo").replace(" ", "_")
+    # Preparar nombre de archivo único
+    ips_id = flat_data.get("identificacion__ips_id", "anonimo").replace(" ", "_").lower()
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     unique_filename = f"BLH_{ips_id}_{timestamp}.csv"
     unique_path = os.path.join(output_dir, unique_filename)
 
+    # Guardar archivo individual
     df.to_csv(unique_path, index=False)
 
+    # Actualizar archivo maestro acumulativo
     master_path = os.path.join(output_dir, "responses_master.csv")
     if os.path.exists(master_path):
         df.to_csv(master_path, mode="a", header=False, index=False)
@@ -50,31 +78,43 @@ def save_response_to_csv(session_state, output_dir="data/responses"):
     return unique_path
 
 
+# ──────────────────────────────────────────────
+# 3️⃣ Calcular progreso general del formulario
+# ──────────────────────────────────────────────
+
 def compute_progress(session_state, tracked_completion_flags):
     """
-    Calculates progress based on the presence of completion flags.
+    Calcula el número de secciones completadas y el porcentaje de avance total.
 
     Args:
-        session_state: Streamlit session state dictionary.
-        tracked_completion_flags: List of string keys ending with '__completed'.
+        session_state (dict): Estado de sesión actual (ej: st.session_state).
+        tracked_completion_flags (list): Lista de claves de progreso (ej: ["datos_generales__completed", ...]).
 
-    Returns:
-        (int, int): Tuple of (number of completed sections, percent completed).
+    Retorna:
+        tuple: (número de secciones completas, porcentaje de avance como entero)
     """
-    filled = sum(1 for flag in tracked_completion_flags if session_state.get(flag, False))
-    percent_complete = int((filled / len(tracked_completion_flags)) * 100) if tracked_completion_flags else 0
-    return filled, percent_complete
+    if not tracked_completion_flags:
+        return 0, 0
 
+    completed_sections = sum(1 for flag in tracked_completion_flags if session_state.get(flag, False))
+    percent_complete = int((completed_sections / len(tracked_completion_flags)) * 100)
+
+    return completed_sections, percent_complete
+
+
+# ──────────────────────────────────────────────
+# 4️⃣ Verificar si sección está completa
+# ──────────────────────────────────────────────
 
 def is_section_completed(session_state, completion_flag):
     """
-    Checks whether a section is marked as completed.
+    Verifica si una sección específica está marcada como completada.
 
     Args:
-        session_state: Streamlit session state dictionary.
-        completion_flag: Key like 'infraestructura_equipos__completed'.
+        session_state (dict): Estado de sesión.
+        completion_flag (str): Nombre de la clave de completitud (ej: 'personal_exclusivo__completed').
 
-    Returns:
-        bool: True if completed, False otherwise.
+    Retorna:
+        bool: True si está completada, False en caso contrario.
     """
-    return session_state.get(completion_flag, False)
+    return bool(session_state.get(completion_flag, False))

@@ -2,7 +2,7 @@ import streamlit as st
 from PIL import Image
 
 # ──────────────────────────────────────────────
-# Import Modules
+# Import Local Modules
 # ──────────────────────────────────────────────
 
 from sections import (
@@ -21,6 +21,8 @@ from utils.sheet_io import (
     append_or_update_row
 )
 
+from config import SURVEY_SECTIONS, INSTRUCTIVO_URL
+
 # ──────────────────────────────────────────────
 # Page Configuration
 # ──────────────────────────────────────────────
@@ -34,9 +36,12 @@ with col_logo:
 with col_title:
     st.title("Formulario para Bancos de Leche Humana (BLH)")
     st.markdown("Complete cada sección. Puede guardar su progreso y continuar más tarde.")
+    st.markdown(
+        f"> **Nota:** La información recopilada está protegida por el derecho fundamental de **Habeas Data** según la Constitución Política de Colombia y la Ley 1581 de 2012. El uso de estos datos debe ceñirse estrictamente a los fines autorizados. Consulte el [Instructivo aquí]({INSTRUCTIVO_URL})."
+    )
 
 # ──────────────────────────────────────────────
-# Section Definitions
+# Section Definitions (Navigation & Rendering)
 # ──────────────────────────────────────────────
 
 section_definitions = [
@@ -53,7 +58,7 @@ section_definitions = [
 ]
 
 # ──────────────────────────────────────────────
-# Identification Section
+# Identification Section (Required First Step)
 # ──────────────────────────────────────────────
 
 identification.render()
@@ -86,11 +91,11 @@ if "section_index" not in st.session_state:
     st.session_state.section_index = 0
 
 # ──────────────────────────────────────────────
-# Sidebar Navigation
+# Sidebar Navigation Menu
 # ──────────────────────────────────────────────
 
 with st.sidebar:
-    st.markdown("### Navegación rápida")
+    st.markdown("### 📑 Navegación rápida")
 
     labels_with_status = [
         f"{'✅' if st.session_state.get(section['key'], False) else '🔲'} {section['label']}"
@@ -113,7 +118,7 @@ st.subheader(current_section["label"])
 current_section["render"]()
 
 # ──────────────────────────────────────────────
-# Progress Bar
+# Progress Bar (Global Progress)
 # ──────────────────────────────────────────────
 
 completion_flags = [s["key"] for s in section_definitions]
@@ -122,7 +127,7 @@ completed_count, progress_percent = compute_progress(st.session_state, completio
 st.progress(progress_percent, text=f"{completed_count} de {len(completion_flags)} secciones completadas")
 
 # ──────────────────────────────────────────────
-# Navigation Buttons
+# Navigation Buttons (Previous / Next)
 # ──────────────────────────────────────────────
 
 col1, col2, _ = st.columns([1, 1, 6])
@@ -151,9 +156,9 @@ if st.session_state.section_index == len(section_definitions) - 1:
         st.rerun()
 
 st.markdown("---")
-st.markdown("### Guardar encuesta completa")
+st.markdown("### 📤 Guardar encuesta completa")
 
-if st.button("📤 Guardar encuesta completa como archivo CSV y Google Sheets"):
+if st.button("Guardar encuesta como CSV y Google Sheets"):
     flat_data = flatten_session_state(st.session_state)
     success = append_or_update_row(flat_data)
     ips_name = st.session_state.get("identificacion", {}).get("ips_id", "IPS desconocida")
