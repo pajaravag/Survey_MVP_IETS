@@ -1,32 +1,40 @@
 import streamlit as st
 from utils.sheet_io import append_or_update_row
 from utils.state_manager import flatten_session_state
-from utils.ui_styles import render_info_box, render_data_protection_box
+from utils.ui_styles import render_info_box, render_data_protection_box, render_compact_example_box
 
 
 def render():
     st.header("2. 🔄 Procesos Estandarizados del Banco de Leche Humana (BLH)")
 
     # ──────────────────────────────────────────────
-    # Instrucciones Visuales con ayuda del instructivo (.docx)
+    # Instrucciones Visuales (Markdown limpio)
     # ──────────────────────────────────────────────
 
     st.markdown(render_info_box("""
-    > ℹ️ **¿Qué se debe registrar en esta sección?**  
-    Aquí debe seleccionar los **procesos estandarizados** que se realizan actualmente en su Banco de Leche Humana (BLH). Esta información es fundamental para comprender el alcance operativo de su institución.
+**¿Qué se debe registrar en esta sección?**  
+Seleccione todos los **procesos estandarizados** que actualmente se realizan en su Banco de Leche Humana (BLH).  
+Esta información es fundamental para entender el alcance operativo de su institución.
+    """), unsafe_allow_html=True)
 
-    > 📝 **Ejemplo:**  
-    Si su BLH realiza actividades de **pasteurización** y **control microbiológico**, debe marcar ambas opciones.
+    st.markdown(render_compact_example_box("""
+📝 **Ejemplo:**  
+Si su BLH realiza actividades de **pasteurización** y **control microbiológico**, debe marcar ambas opciones.
+    """), unsafe_allow_html=True)
 
-    > ➕ **Otros procesos:**  
-    Si su BLH realiza procesos adicionales no listados, por favor descríbalos en el campo "Otros procesos".
-
+    st.markdown(render_compact_example_box("""
+➕ **Otros procesos:**  
+Si su BLH realiza actividades adicionales no listadas, por favor descríbalas en el campo **“Otros procesos”**.
     """), unsafe_allow_html=True)
 
     st.markdown(render_data_protection_box("""
-    > 🔐 **Nota legal:**  
-    Los datos recopilados están protegidos bajo la **Ley 1581 de 2012 (Habeas Data)** y se usarán exclusivamente para fines autorizados por el **IETS**.
+🔐 **Nota legal:**  
+La información recopilada está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y se utilizará únicamente para fines autorizados por el **IETS**.
     """), unsafe_allow_html=True)
+
+    # ──────────────────────────────────────────────
+    # Preparación de Variables
+    # ──────────────────────────────────────────────
 
     prefix = "procesos_realizados__"
     completion_flag = prefix + "completed"
@@ -48,15 +56,15 @@ def render():
         "Seguimiento y Trazabilidad"
     ]
 
-    # ──────────────────────────────────────────────
-    # Cargar valores previos desde session_state
-    # ──────────────────────────────────────────────
-
     prev_selected = st.session_state.get(procesos_key, [])
     prev_otros = st.session_state.get(otros_key, "")
 
+    # ──────────────────────────────────────────────
+    # Formulario de Selección
+    # ──────────────────────────────────────────────
+
     with st.form("procesos_form"):
-        st.markdown("#### ✅ Seleccione los procesos actualmente realizados por su BLH:")
+        st.markdown("#### ✅ Seleccione los procesos actualmente realizados:")
 
         selected = []
         for proceso in procesos:
@@ -70,7 +78,7 @@ def render():
             placeholder="Describa aquí cualquier proceso adicional no incluido en la lista anterior."
         )
 
-        st.caption("_Ejemplo de otros procesos: Educación comunitaria, talleres para madres donantes._")
+        st.caption("_Ejemplo: Educación comunitaria, talleres para madres donantes._")
 
         guardar = st.form_submit_button("💾 Guardar sección - Procesos Estandarizados")
 
@@ -80,7 +88,7 @@ def render():
 
     if guardar:
         if not selected and not otros_procesos.strip():
-            st.warning("⚠️ Debe seleccionar al menos un proceso o describir un proceso en el campo 'Otros'.")
+            st.warning("⚠️ Debe seleccionar al menos un proceso o registrar uno en el campo 'Otros procesos'.")
         else:
             st.session_state[procesos_key] = selected
             st.session_state[otros_key] = otros_procesos.strip()
@@ -99,7 +107,7 @@ def render():
                 st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
 
     # ──────────────────────────────────────────────
-    # Expander: Ver resumen de datos guardados
+    # Resumen en Expander
     # ──────────────────────────────────────────────
 
     with st.expander("🔍 Ver resumen de procesos seleccionados"):

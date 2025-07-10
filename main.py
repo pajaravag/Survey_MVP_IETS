@@ -17,22 +17,27 @@ from utils.ui_layout import render_header, render_footer
 from config import INSTRUCTIVO_URL
 
 # ──────────────────────────────────────────────
-# Page Configuration
+# Page Configuration (Institutional Branding)
 # ──────────────────────────────────────────────
 
 st.set_page_config(page_title="Encuesta BLH", layout="wide")
-
-# Header Institucional
 render_header()
 
-# Introducción
-st.markdown(render_info_box(f"""
-Complete cada sección. Puede guardar su progreso y continuar más tarde.<br><br>
-<strong>Nota:</strong> La información está protegida por el derecho fundamental de <strong>Habeas Data</strong> (Ley 1581 de 2012). Consulte el <a href='{INSTRUCTIVO_URL}' target='_blank'>Instructivo aquí</a>.
-"""), unsafe_allow_html=True)
+# ──────────────────────────────────────────────
+# Introductory Information (Safe Markdown Box)
+# ──────────────────────────────────────────────
+
+intro_markdown = """
+ℹ️ **Instrucciones Generales:**  
+Complete cada sección. Puede guardar su progreso y continuar más tarde.
+
+**Nota:** La información está protegida por el derecho fundamental de **Habeas Data** (Ley 1581 de 2012). Consulte el [Instructivo aquí]({}).
+""".format(INSTRUCTIVO_URL)
+
+st.markdown(render_info_box(intro_markdown), unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────
-# Secciones
+# Section Definitions (Navigation & Rendering)
 # ──────────────────────────────────────────────
 
 section_definitions = [
@@ -49,7 +54,7 @@ section_definitions = [
 ]
 
 # ──────────────────────────────────────────────
-# Identificación Inicial
+# Identification (Required Before Proceeding)
 # ──────────────────────────────────────────────
 
 identification.render()
@@ -59,6 +64,7 @@ if "identificacion" not in st.session_state:
     st.stop()
 
 ips_id = st.session_state["identificacion"].get("ips_id", "").strip().lower()
+
 if ips_id and not st.session_state.get("data_loaded", False):
     existing_data = load_existing_data(ips_id)
     if existing_data:
@@ -68,6 +74,7 @@ if ips_id and not st.session_state.get("data_loaded", False):
         st.info(f"📂 Datos previos restaurados para IPS: `{ips_id}`.")
     else:
         st.info("📝 No se encontraron datos previos para esta IPS.")
+
     st.session_state["data_loaded"] = True
     st.rerun()
 
@@ -75,16 +82,18 @@ if "section_index" not in st.session_state:
     st.session_state.section_index = 0
 
 # ──────────────────────────────────────────────
-# Sidebar Navegación
+# Sidebar Navigation Menu (Quick Access)
 # ──────────────────────────────────────────────
 
 with st.sidebar:
     st.markdown("### 📑 Navegación rápida")
+
     labels_with_status = [
         f"{'✅' if st.session_state.get(section['key'], False) else '🔲'} {section['label']}"
         for section in section_definitions
     ]
-    selected_label = st.selectbox("Ir a sección", labels_with_status, index=st.session_state.section_index)
+
+    selected_label = st.selectbox("Ir a sección:", labels_with_status, index=st.session_state.section_index)
     selected_index = next(i for i, s in enumerate(section_definitions) if s["label"] in selected_label)
 
     if selected_index != st.session_state.section_index:
@@ -92,7 +101,7 @@ with st.sidebar:
         st.rerun()
 
 # ──────────────────────────────────────────────
-# Render Sección Actual
+# Render Current Section
 # ──────────────────────────────────────────────
 
 current_section = section_definitions[st.session_state.section_index]
@@ -100,7 +109,7 @@ st.subheader(current_section["label"])
 current_section["render"]()
 
 # ──────────────────────────────────────────────
-# Barra de Progreso Visual
+# Global Progress Bar
 # ──────────────────────────────────────────────
 
 completed_count, progress_percent = compute_progress(st.session_state, [s["key"] for s in section_definitions])
@@ -108,7 +117,7 @@ completed_count, progress_percent = compute_progress(st.session_state, [s["key"]
 st.progress(progress_percent, text=f"🔄 Progreso general: {completed_count} de {len(section_definitions)} secciones completadas")
 
 # ──────────────────────────────────────────────
-# Botones Navegación
+# Navigation Buttons (Previous / Next)
 # ──────────────────────────────────────────────
 
 col1, col2, _ = st.columns([1, 1, 6])
@@ -126,11 +135,11 @@ with col2:
             st.rerun()
 
 # ──────────────────────────────────────────────
-# Mensaje Final
+# Final Section Message & Save
 # ──────────────────────────────────────────────
 
 if st.session_state.section_index == len(section_definitions) - 1:
-    st.success("🎉 Ha llegado al final del formulario. Puede revisar cualquier sección antes de finalizar.")
+    st.success("🎉 Ha llegado al final del formulario. Revise cualquier sección si es necesario.")
     if st.button("⬅️ Volver al inicio"):
         st.session_state.section_index = 0
         st.rerun()
@@ -142,13 +151,14 @@ if st.button("Guardar encuesta como CSV y Google Sheets"):
     flat_data = flatten_session_state(st.session_state)
     success = append_or_update_row(flat_data)
     ips_name = st.session_state.get("identificacion", {}).get("ips_id", "IPS desconocida")
+
     if success:
         st.success(f"✅ Encuesta de `{ips_name}` guardada exitosamente.")
     else:
         st.error("❌ Error al guardar la encuesta. Por favor intente nuevamente.")
 
 # ──────────────────────────────────────────────
-# Footer Institucional
+# Static Footer
 # ──────────────────────────────────────────────
 
 st.markdown("<hr>", unsafe_allow_html=True)

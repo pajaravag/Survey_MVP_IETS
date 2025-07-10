@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
-from utils.ui_styles import render_info_box, render_data_protection_box
+from utils.ui_styles import render_info_box, render_data_protection_box, render_compact_example_box
 
 # 🔐 Safe conversion helpers
 def safe_int(value, default=0):
@@ -9,6 +9,7 @@ def safe_int(value, default=0):
         return int(float(value))
     except (ValueError, TypeError):
         return default
+
 
 def safe_float(value, default=0.0):
     try:
@@ -25,26 +26,27 @@ def render():
     # ──────────────────────────────────────────────
 
     st.markdown(render_info_box("""
-    > ℹ️ **¿Qué información debe registrar?**  
-    Por favor registre el **personal que participa en el funcionamiento del Banco de Leche Humana (BLH)**. Para cada perfil indique:
-    - El **número de personas** que cumplen ese rol
-    - El **salario mensual promedio** en pesos COP
-    - Si el personal es **compartido**, indique el **% de horas dedicadas al BLH**.
+**¿Qué información debe registrar?**  
+Registre el **personal que participa en el funcionamiento del Banco de Leche Humana (BLH)**. Para cada perfil indique:
+- El **número de personas** asignadas.
+- El **salario mensual promedio** en pesos COP.
+- En caso de personal **compartido**, el **% de horas dedicadas exclusivamente al BLH**.
+    """), unsafe_allow_html=True)
 
-    > 📝 **Ejemplo práctico:**  
-    - Perfil: *Nutricionista*  
-    - Personal exclusivo: *1 persona* — Salario: *2,500,000 COP*  
-    - Personal compartido: *1 persona* — 40% de dedicación — Salario: *2,800,000 COP*
-
-    > 🔐 **Nota:** La información será tratada conforme a la **Ley 1581 de 2012 (Habeas Data)** y se utilizará exclusivamente para los fines autorizados.
+    st.markdown(render_compact_example_box("""
+📝 **Ejemplo práctico:**  
+- Perfil: *Nutricionista*  
+- Exclusivo: 1 persona — Salario: 2,500,000 COP  
+- Compartido: 1 persona — 40% de dedicación — Salario: 2,800,000 COP
     """), unsafe_allow_html=True)
 
     st.markdown(render_data_protection_box("""
-    > 🔒 Los datos recopilados serán utilizados únicamente con fines estadísticos y de análisis, respetando la confidencialidad de cada IPS.
+🔐 **Nota legal:**  
+Los datos se recopilan para fines de análisis económico y son tratados conforme a la **Ley 1581 de 2012 (Habeas Data)**, garantizando la confidencialidad institucional.
     """), unsafe_allow_html=True)
 
     # ──────────────────────────────────────────────
-    # Definición de Roles
+    # Roles Definidos
     # ──────────────────────────────────────────────
 
     roles = [
@@ -70,7 +72,7 @@ def render():
     personal_compartido = {}
 
     # ──────────────────────────────────────────────
-    # Personal Exclusivo (100% dedicado)
+    # Sección: Personal Exclusivo (100%)
     # ──────────────────────────────────────────────
 
     st.subheader("👥 Personal Exclusivo (dedicación total al BLH)")
@@ -79,6 +81,7 @@ def render():
         rol_data = exclusivo_data.get(rol, {})
         with st.container():
             st.markdown(f"**{rol}**")
+
             cantidad = st.number_input(
                 f"Número de personas ({rol})",
                 min_value=0, step=1,
@@ -92,7 +95,7 @@ def render():
                 min_value=0.0, step=10000.0,
                 value=safe_float(rol_data.get("salario_mensual", 0.0)),
                 key=f"excl_{rol}_s",
-                help="Ingrese el valor promedio mensual, o 0 si no aplica."
+                help="Ingrese el valor promedio mensual o 0 si no aplica."
             )
 
             personal_exclusivo[rol] = {
@@ -101,7 +104,7 @@ def render():
             }
 
     # ──────────────────────────────────────────────
-    # Personal Compartido (dedicación parcial)
+    # Sección: Personal Compartido (dedicación parcial)
     # ──────────────────────────────────────────────
 
     st.subheader("🤝 Personal Compartido (dedicación parcial al BLH)")
@@ -140,7 +143,7 @@ def render():
             }
 
     # ──────────────────────────────────────────────
-    # Validación de Completitud para Progreso
+    # Validación y Estado
     # ──────────────────────────────────────────────
 
     any_exclusive = any(p.get("cantidad", 0) > 0 for p in personal_exclusivo.values())
@@ -148,7 +151,7 @@ def render():
     st.session_state[completion_flag] = any_exclusive or any_shared
 
     # ──────────────────────────────────────────────
-    # Botón de Guardado y Navegación
+    # Botón de Guardado
     # ──────────────────────────────────────────────
 
     if st.button("💾 Guardar sección - Personal BLH"):
@@ -166,10 +169,10 @@ def render():
                 st.session_state.navigation_triggered = True
                 st.rerun()
         else:
-            st.error("❌ Error al guardar. Por favor verifique e intente nuevamente.")
+            st.error("❌ Error al guardar. Por favor intente nuevamente.")
 
     # ──────────────────────────────────────────────
-    # Resumen Visual de Datos Guardados
+    # Resumen Visual
     # ──────────────────────────────────────────────
 
     with st.expander("🔍 Ver Personal Exclusivo guardado"):

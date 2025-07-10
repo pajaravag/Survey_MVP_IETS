@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
-from utils.ui_styles import render_info_box, render_data_protection_box
+from utils.ui_styles import render_info_box, render_data_protection_box, render_compact_example_box
 
 # 🔐 Safe conversion helpers
 def safe_float(value, default=0.0):
@@ -18,33 +18,38 @@ def safe_int(value, default=0):
 
 
 def render():
-    st.header("9. ⚙️ Eficiencia, Calidad y Seguridad del BLH")
+    st.header("9. ⚙️ Eficiencia, Calidad y Seguridad del Banco de Leche Humana")
 
     # ──────────────────────────────────────────────
     # Instrucciones Visuales
     # ──────────────────────────────────────────────
 
     st.markdown(render_info_box("""
-    > ℹ️ **¿Por qué se solicita esta información?**  
-    Esta sección busca evaluar la **eficiencia operativa, la calidad y la seguridad** en la gestión de la leche humana dentro de su Banco de Leche Humana (BLH).
+**¿Qué información debe registrar?**  
+Esta sección busca evaluar la **eficiencia, calidad y seguridad** en el funcionamiento del Banco de Leche Humana (BLH).  
+Por favor diligencie los siguientes indicadores:
 
-    📝 **Incluya información como:**  
-    - Volumen de leche descartada.  
-    - Tiempo promedio desde la recolección hasta la distribución.  
-    - Realización de controles microbiológicos.
+- Volumen promedio de **leche descartada**.
+- Tiempo promedio desde la **recolección hasta la distribución**.
+- Si se realizan **controles microbiológicos post-pasteurización**.
 
-    > 💡 **Ejemplo:**  
-    - Leche descartada: 200 mL/mes.  
-    - Tiempo de distribución: 2 días.  
-    - Control microbiológico: Sí, con 5 pruebas mensuales.
+Recuerde que estos datos ayudan a identificar oportunidades de mejora en los procesos del BLH.
+    """), unsafe_allow_html=True)
+
+    st.markdown(render_compact_example_box("""
+📝 **Ejemplo práctico:**  
+- Leche descartada: *200 mL/mes*  
+- Tiempo promedio de distribución: *2 días*  
+- Control microbiológico: *Sí, con 5 pruebas mensuales*
     """), unsafe_allow_html=True)
 
     st.markdown(render_data_protection_box("""
-    > 🔒 La información recopilada está protegida por la **Ley 1581 de 2012 (Habeas Data)** y será utilizada únicamente para fines del estudio.
+🔐 **Nota legal:**  
+Los datos están protegidos por la **Ley 1581 de 2012 (Habeas Data)** y serán utilizados exclusivamente para los fines autorizados del estudio de BLH.
     """), unsafe_allow_html=True)
 
     # ──────────────────────────────────────────────
-    # Variables & Datos Anteriores
+    # Variables y Datos Previos
     # ──────────────────────────────────────────────
 
     prefix = "calidad_seguridad__"
@@ -52,7 +57,7 @@ def render():
     prev_data = st.session_state.get(prefix + "data", {})
 
     # ──────────────────────────────────────────────
-    # Registro de Indicadores de Calidad
+    # Inputs de Calidad y Seguridad
     # ──────────────────────────────────────────────
 
     leche_descartada_ml = st.number_input(
@@ -99,7 +104,7 @@ def render():
     st.session_state[completion_flag] = is_complete
 
     # ──────────────────────────────────────────────
-    # Botón de Guardado con Feedback Visual
+    # Botón de Guardado con Feedback
     # ──────────────────────────────────────────────
 
     if st.button("💾 Guardar sección - Eficiencia, Calidad y Seguridad"):
@@ -116,7 +121,7 @@ def render():
         success = append_or_update_row(flat_data)
 
         if success:
-            st.success("✅ Datos guardados correctamente.")
+            st.success("✅ Datos de eficiencia, calidad y seguridad guardados correctamente.")
             if "section_index" in st.session_state and st.session_state.section_index < 9:
                 st.session_state.section_index += 1
                 st.session_state.navigation_triggered = True

@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
-from utils.ui_styles import render_info_box, render_data_protection_box
+from utils.ui_styles import render_info_box, render_data_protection_box, render_compact_example_box
 
 # 🔐 Safe conversion helpers
 def safe_int(value, default=0):
@@ -9,6 +9,7 @@ def safe_int(value, default=0):
         return int(float(value))
     except (ValueError, TypeError):
         return default
+
 
 def safe_float(value, default=0.0):
     try:
@@ -21,31 +22,32 @@ def render():
     st.header("8. 🚚 Transporte y Recolección de Leche Humana")
 
     # ──────────────────────────────────────────────
-    # Instrucciones Visuales
+    # Instrucciones Visuales con ejemplos
     # ──────────────────────────────────────────────
 
     st.markdown(render_info_box("""
-    > ℹ️ **¿Qué información se solicita en esta sección?**  
-    Aquí debe registrar la información relacionada con la **recolección y transporte** de la leche humana para su Banco de Leche Humana (BLH).  
+**¿Qué información debe registrar?**  
+Por favor registre los detalles sobre la **recolección y transporte de la leche humana** en su Banco de Leche Humana (BLH).  
+Incluya información sobre:
+- **Modalidades de recolección** empleadas.
+- **Equipos de transporte** utilizados.
+- **Costos mensuales y distancias** según zona de recolección.
+    """), unsafe_allow_html=True)
 
-    📝 **Incluya información sobre:**  
-    - Modalidades de recolección empleadas.  
-    - Uso de equipos especializados.  
-    - Costos mensuales y distancias recorridas según zona.
-
-    > 💡 **Ejemplo práctico:**  
-    - **Modalidades:** Recolección en casa de donantes.  
-    - **Equipos:** Termos rígidos - 2 unidades.  
-    - **Zonas:** 100 km mensuales en zona rural.
-
+    st.markdown(render_compact_example_box("""
+📝 **Ejemplo práctico:**  
+- Modalidades: Recolección en domicilio de donantes.  
+- Equipos: 2 termos rígidos — Costo por unidad: 150,000 COP.  
+- Zona rural: 120 km mensuales — Costo: 300,000 COP.
     """), unsafe_allow_html=True)
 
     st.markdown(render_data_protection_box("""
-    > 🔒 Esta información será utilizada únicamente para los fines del estudio y está protegida por la **Ley 1581 de 2012 (Habeas Data)**.
+🔐 **Nota legal:**  
+La información se utilizará exclusivamente para los fines del estudio, en cumplimiento de la **Ley 1581 de 2012 (Habeas Data)**.
     """), unsafe_allow_html=True)
 
     # ──────────────────────────────────────────────
-    # Variables & Estado
+    # Variables de Estado
     # ──────────────────────────────────────────────
 
     prefix_modal = "transporte_modalidades__"
@@ -65,11 +67,14 @@ def render():
 
     modalidades = {
         "En la institución donde se encuentra el BLH": st.checkbox(
-            "Recepción en la institución", value=modalidades_prev.get("En la institución donde se encuentra el BLH", False)),
+            "Recepción en la institución", value=modalidades_prev.get("En la institución donde se encuentra el BLH", False)
+        ),
         "En las casas de las donantes": st.checkbox(
-            "Recolectada en domicilio", value=modalidades_prev.get("En las casas de las donantes", False)),
+            "Recolectada en domicilio", value=modalidades_prev.get("En las casas de las donantes", False)
+        ),
         "En centros de recolección": st.checkbox(
-            "Centros de recolección", value=modalidades_prev.get("En centros de recolección", False))
+            "Centros de recolección", value=modalidades_prev.get("En centros de recolección", False)
+        )
     }
 
     # ──────────────────────────────────────────────
@@ -98,7 +103,7 @@ def render():
             st.markdown(f"**{eq}**")
 
             cantidad = st.number_input(
-                f"Cantidad de {eq}",
+                f"Cantidad disponible de {eq}",
                 min_value=0, step=1,
                 value=safe_int(eq_data.get("cantidad", 0)),
                 key=f"{eq}_cantidad"
@@ -128,7 +133,7 @@ def render():
     # Detalle por Zona
     # ──────────────────────────────────────────────
 
-    st.subheader("📊 Detalle de recolección por zona")
+    st.subheader("📊 Detalle por zona de recolección")
 
     zonas = [
         "Donación en zona urbana",
@@ -170,7 +175,7 @@ def render():
         }
 
     # ──────────────────────────────────────────────
-    # Completitud para Navegación
+    # Completitud y Estado
     # ──────────────────────────────────────────────
 
     modalities_filled = any(modalidades.values())
@@ -180,7 +185,7 @@ def render():
     st.session_state[completion_flag] = modalities_filled or details_filled or equipment_filled
 
     # ──────────────────────────────────────────────
-    # Guardado con Feedback
+    # Botón de Guardado
     # ──────────────────────────────────────────────
 
     if st.button("💾 Guardar sección - Transporte y Recolección"):
@@ -192,7 +197,7 @@ def render():
         success = append_or_update_row(flat_data)
 
         if success:
-            st.success("✅ Datos de transporte guardados exitosamente.")
+            st.success("✅ Datos de transporte y recolección guardados correctamente.")
             if "section_index" in st.session_state and st.session_state.section_index < 9:
                 st.session_state.section_index += 1
                 st.session_state.navigation_triggered = True
@@ -201,7 +206,7 @@ def render():
             st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
 
     # ──────────────────────────────────────────────
-    # Visualización de Datos Guardados
+    # Resumen de Datos Guardados
     # ──────────────────────────────────────────────
 
     with st.expander("🔍 Ver modalidades de recolección guardadas"):

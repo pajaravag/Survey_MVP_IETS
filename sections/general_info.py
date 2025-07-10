@@ -1,28 +1,35 @@
 import streamlit as st
 from utils.sheet_io import append_or_update_row
 from utils.state_manager import flatten_session_state
-from utils.ui_styles import render_info_box, render_data_protection_box
+from utils.ui_styles import render_info_box, render_data_protection_box, render_compact_example_box
 
 
 def render():
     st.header("1. 📋 Datos Generales del Banco de Leche Humana (BLH)")
 
     # ──────────────────────────────────────────────
-    # Instrucciones Visuales (con ayudas del .docx)
+    # Instrucciones Visuales Claras
     # ──────────────────────────────────────────────
 
     st.markdown(render_info_box("""
-    > ℹ️ **¿Por qué es importante esta sección?**  
-    Esta sección permite identificar su institución y comprender las características clave de su Banco de Leche Humana (BLH). La información es esencial para el análisis comparativo entre establecimientos.
+**ℹ️ ¿Por qué es importante esta sección?**  
+Esta sección permite identificar su institución y comprender las características clave de su Banco de Leche Humana (BLH).  
+La información es esencial para el análisis comparativo entre establecimientos.
+    """), unsafe_allow_html=True)
 
-    > 📝 **Recuerde:**  
-    Por favor diligencie todos los campos de forma completa y precisa.
+    st.markdown(render_compact_example_box("""
+**📝 Recuerde:**  
+Por favor diligencie todos los campos de forma **completa y precisa**.
     """), unsafe_allow_html=True)
 
     st.markdown(render_data_protection_box("""
-    > 🔐 **Nota legal:**  
-    La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y será utilizada exclusivamente con fines de análisis autorizados por el **Instituto de Evaluación Tecnológica en Salud (IETS)**.
+**🔐 Nota legal:**  
+La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y será utilizada exclusivamente con fines de análisis autorizados por el **Instituto de Evaluación Tecnológica en Salud (IETS)**.
     """), unsafe_allow_html=True)
+
+    # ──────────────────────────────────────────────
+    # Prefijos y Validación
+    # ──────────────────────────────────────────────
 
     prefix = "datos_generales__"
     completion_flag = prefix + "completed"
@@ -58,7 +65,7 @@ def render():
     anio_impl = st.text_input(
         "📅 Año de implementación del BLH (obligatorio, formato AAAA)",
         value=st.session_state.get(prefix + "anio_impl", ""),
-        help="Indique el año en que su institución inició formalmente el funcionamiento del BLH."
+        help="Ejemplo: 2008"
     )
     st.caption("_Ejemplo: 2008_")
 
@@ -99,7 +106,7 @@ def render():
                 st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
 
     # ──────────────────────────────────────────────
-    # Expander: Ver Resumen de Datos
+    # Resumen Visual de Datos Guardados
     # ──────────────────────────────────────────────
 
     with st.expander("🔍 Ver resumen de datos guardados"):

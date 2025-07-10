@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
-from utils.ui_styles import render_info_box, render_data_protection_box
+from utils.ui_styles import render_info_box, render_data_protection_box, render_compact_example_box
 
 # 🔐 Safe conversion helper
 def safe_float(value, default=0.0):
@@ -15,31 +15,33 @@ def render():
     st.header("5. 🧴 Insumos Mensuales del Banco de Leche Humana (BLH)")
 
     # ──────────────────────────────────────────────
-    # Instrucciones Visuales Mejoradas
+    # Instrucciones Visuales
     # ──────────────────────────────────────────────
 
     st.markdown(render_info_box("""
-    > ℹ️ **¿Qué información debe registrar?**  
-    Por favor indique los **insumos mensuales** utilizados en el funcionamiento de su Banco de Leche Humana (BLH). Para cada insumo registre:
-    - La **unidad de medida** (ej.: frascos, litros, cajas, paquetes)
-    - La **cantidad promedio mensual utilizada**
-    - El **costo promedio por unidad** (en pesos COP)
+**¿Qué información debe registrar?**  
+Registre los **insumos mensuales** necesarios para el funcionamiento de su Banco de Leche Humana (BLH).  
+Para cada insumo debe diligenciar:
+- La **unidad de medida** (ej.: frascos, litros, cajas, paquetes)
+- La **cantidad promedio mensual utilizada**
+- El **costo promedio por unidad** (en pesos COP)
+    """), unsafe_allow_html=True)
 
-    > 📝 **Ejemplo práctico:**  
-    - Insumo: *Frascos estériles*  
-    - Unidad de medida: *frascos*  
-    - Cantidad promedio mensual: *50*  
-    - Costo promedio por unidad: *1,500 COP*
-
-    > 🔐 **Nota:** La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y se usará exclusivamente para fines autorizados.
+    st.markdown(render_compact_example_box("""
+📝 **Ejemplo práctico:**  
+- Insumo: *Frascos estériles*  
+- Unidad: *frascos*  
+- Cantidad promedio: *50*  
+- Costo promedio por unidad: *1,500 COP*
     """), unsafe_allow_html=True)
 
     st.markdown(render_data_protection_box("""
-    > 🔒 La información será utilizada únicamente para estimar costos operativos de los Bancos de Leche Humana de forma agregada y anónima.
+🔐 **Nota legal:**  
+La información será utilizada exclusivamente para el análisis de costos operativos de manera agregada y confidencial, conforme a la **Ley 1581 de 2012 (Habeas Data)**.
     """), unsafe_allow_html=True)
 
     # ──────────────────────────────────────────────
-    # Prefijos y Claves
+    # Prefijos y Estado de Datos
     # ──────────────────────────────────────────────
 
     prefix = "insumos_mensuales__"
@@ -49,7 +51,7 @@ def render():
     insumos_data = st.session_state.get(insumos_key, {})
 
     # ──────────────────────────────────────────────
-    # Categorías y Lista de Insumos
+    # Definición de Categorías e Insumos
     # ──────────────────────────────────────────────
 
     categorias = {
@@ -73,12 +75,13 @@ def render():
     }
 
     # ──────────────────────────────────────────────
-    # Render Inputs por Categoría e Insumo
+    # Formulario Dinámico por Categoría
     # ──────────────────────────────────────────────
 
     for categoria, insumos in categorias.items():
         with st.expander(f"🔹 {categoria}"):
             cat_data = insumos_data.get(categoria, {})
+
             for insumo in insumos:
                 item_data = cat_data.get(insumo, {})
 
@@ -88,7 +91,7 @@ def render():
                     f"Unidad de medida para {insumo}",
                     value=item_data.get("unidad", ""),
                     key=f"{categoria}_{insumo}_unidad",
-                    help="Ej.: frascos, litros, cajas, paquetes"
+                    help="Ej.: frascos, litros, cajas"
                 )
 
                 cantidad = st.number_input(
@@ -144,10 +147,10 @@ def render():
                 st.session_state.navigation_triggered = True
                 st.rerun()
         else:
-            st.error("❌ Error al guardar. Por favor intente nuevamente.")
+            st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
 
     # ──────────────────────────────────────────────
-    # Resumen Visual de Datos Guardados
+    # Resumen de Datos Guardados
     # ──────────────────────────────────────────────
 
     with st.expander("🔍 Ver resumen de datos guardados en esta sección"):

@@ -1,7 +1,7 @@
 import streamlit as st
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
-from utils.ui_styles import render_info_box, render_data_protection_box
+from utils.ui_styles import render_info_box, render_data_protection_box, render_compact_example_box
 
 # 🔐 Safe conversion helpers
 def safe_int(value, default=0):
@@ -21,29 +21,38 @@ def render():
     st.header("3. 👩‍🍼 Donantes y Receptores")
 
     # ──────────────────────────────────────────────
-    # Instrucciones Visuales con ejemplos y guía
+    # Cuadros de Instrucción Visual
     # ──────────────────────────────────────────────
 
     st.markdown(render_info_box("""
-    > ℹ️ **¿Qué información debe registrar aquí?**  
-    En esta sección se recopila información sobre:
-    - Número promedio de **donantes activas** por mes.
-    - Volumen promedio de leche recolectada.
-    - Porcentaje de **origen** de la leche.
-    - Información sobre **pasteurización**, receptores y distribución.
+**¿Qué información debe registrar aquí?**  
+En esta sección se recopila información sobre:
+- Número promedio de **donantes activas** por mes.
+- Volumen promedio de **leche recolectada**.
+- Porcentaje de **origen** de la leche.
+- Información sobre **pasteurización**, receptores y distribución.
+    """), unsafe_allow_html=True)
 
-    > 📝 **Ejemplos prácticos:**  
-    - Donantes activas: *12 donantes/mes*  
-    - Volumen recolectado: *8,500 ml/mes*  
-    - Porcentaje origen: *Institución 40%*, *Domicilio 50%*, *Centros 10%*.
+    st.markdown(render_compact_example_box("""
+📝 **Ejemplo práctico:**  
+- Donantes activas: *12 donantes/mes*  
+- Volumen recolectado: *8,500 ml/mes*  
+- Porcentaje origen: *Institución 40%*, *Domicilio 50%*, *Centros 10%*
+    """), unsafe_allow_html=True)
 
-    > ➕ Si algún campo no aplica, por favor ingrese **0** o seleccione **No aplica**.
+    st.markdown(render_compact_example_box("""
+➕ **Si un dato no aplica:**  
+Registre **0** o seleccione **No aplica**.
     """), unsafe_allow_html=True)
 
     st.markdown(render_data_protection_box("""
-    > 🔐 **Nota legal:**  
-    La información está protegida por la **Ley 1581 de 2012 (Habeas Data)** y se usará únicamente para los fines autorizados por el IETS.
+🔐 **Nota legal:**  
+Los datos recopilados están protegidos por la **Ley 1581 de 2012 (Habeas Data)** y se usarán exclusivamente para los fines autorizados por el **IETS**.
     """), unsafe_allow_html=True)
+
+    # ──────────────────────────────────────────────
+    # Prefijos y Estados Previos
+    # ──────────────────────────────────────────────
 
     prefix = "donantes_receptores__"
     completion_flag = prefix + "completed"
@@ -52,7 +61,7 @@ def render():
     with st.form("donantes_form"):
 
         # ──────────────────────────────────────────────
-        # Donantes activas y volumen recolectado
+        # Donantes y Volumen Recolectado
         # ──────────────────────────────────────────────
 
         donantes_mes = st.number_input(
@@ -73,7 +82,7 @@ def render():
         st.caption("_Ejemplo: 8,500 ml recolectados mensualmente._")
 
         # ──────────────────────────────────────────────
-        # Porcentaje de origen de la leche
+        # Porcentaje de Origen de la Leche
         # ──────────────────────────────────────────────
 
         st.markdown("### 📊 Porcentaje de origen de la leche recolectada *(la suma debe ser 100%)*")
@@ -86,7 +95,7 @@ def render():
         st.info(f"🔢 **Total actual:** {total_pct}% (debe ser exactamente 100%)")
 
         # ──────────────────────────────────────────────
-        # Pasteurización (condicional)
+        # Pasteurización Condicional
         # ──────────────────────────────────────────────
 
         pasteuriza = st.radio(
@@ -103,19 +112,19 @@ def render():
                 min_value=0.0,
                 value=safe_float(data.get(prefix + "volumen_pasteurizada", 0.0)),
                 step=10.0,
-                help="Ejemplo: 6,000 ml pasteurizados por mes."
+                help="Ejemplo: 6,000 ml"
             )
             st.caption("_Ejemplo: 6,000 ml pasteurizados mensualmente._")
 
         # ──────────────────────────────────────────────
-        # Receptores y volumen distribuido
+        # Receptores y Volumen Distribuido
         # ──────────────────────────────────────────────
 
         receptores_mes = st.number_input(
             "👶 Número promedio de receptores activos por mes",
             min_value=0,
             value=safe_int(data.get(prefix + "receptores_mes", 0)),
-            help="Ejemplo: 8 receptores activos"
+            help="Ejemplo: 8 receptores"
         )
         st.caption("_Ejemplo: 8 receptores mensuales._")
 
@@ -129,7 +138,7 @@ def render():
         st.caption("_Ejemplo: 7,500 ml distribuidos mensualmente._")
 
         # ──────────────────────────────────────────────
-        # Submit Button
+        # Botón de Guardado
         # ──────────────────────────────────────────────
 
         submitted = st.form_submit_button("💾 Guardar sección - Donantes y Receptores")
@@ -169,10 +178,10 @@ def render():
                     st.session_state.navigation_triggered = True
                     st.rerun()
             else:
-                st.error("❌ Error al guardar los datos. Intente nuevamente.")
+                st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
 
     # ──────────────────────────────────────────────
-    # Expander: Ver resumen de datos guardados
+    # Resumen de Datos Guardados
     # ──────────────────────────────────────────────
 
     with st.expander("🔍 Ver resumen de datos guardados"):
