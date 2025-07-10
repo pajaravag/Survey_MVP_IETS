@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
+from utils.ui_styles import render_info_box, render_data_protection_box
 
 # 🔐 Safe conversion helper
 def safe_float(value, default=0.0):
@@ -11,26 +12,45 @@ def safe_float(value, default=0.0):
 
 
 def render():
-    st.header("5. Insumos Mensuales")
+    st.header("5. 🧴 Insumos Mensuales del Banco de Leche Humana (BLH)")
 
-    st.markdown("""
-    > ℹ️ **Instrucciones:**  
-    Registre los **insumos mensuales** utilizados en el Banco de Leche Humana (BLH).  
-    Para cada insumo indique:
-    - Unidad de medida
-    - Cantidad promedio mensual utilizada
-    - Costo promedio por unidad (en pesos COP)
+    # ──────────────────────────────────────────────
+    # Instrucciones Visuales Mejoradas
+    # ──────────────────────────────────────────────
 
-    Si un insumo no aplica a su BLH, puede dejar los valores en **0** o en blanco.
+    st.markdown(render_info_box("""
+    > ℹ️ **¿Qué información debe registrar?**  
+    Por favor indique los **insumos mensuales** utilizados en el funcionamiento de su Banco de Leche Humana (BLH). Para cada insumo registre:
+    - La **unidad de medida** (ej.: frascos, litros, cajas, paquetes)
+    - La **cantidad promedio mensual utilizada**
+    - El **costo promedio por unidad** (en pesos COP)
 
-    > 🔐 **Nota:** La información está protegida conforme a la Ley 1581 de 2012 (Habeas Data).
-    """)
+    > 📝 **Ejemplo práctico:**  
+    - Insumo: *Frascos estériles*  
+    - Unidad de medida: *frascos*  
+    - Cantidad promedio mensual: *50*  
+    - Costo promedio por unidad: *1,500 COP*
+
+    > 🔐 **Nota:** La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y se usará exclusivamente para fines autorizados.
+    """), unsafe_allow_html=True)
+
+    st.markdown(render_data_protection_box("""
+    > 🔒 La información será utilizada únicamente para estimar costos operativos de los Bancos de Leche Humana de forma agregada y anónima.
+    """), unsafe_allow_html=True)
+
+    # ──────────────────────────────────────────────
+    # Prefijos y Claves
+    # ──────────────────────────────────────────────
 
     prefix = "insumos_mensuales__"
     completion_flag = prefix + "completed"
     insumos_key = prefix + "data"
 
     insumos_data = st.session_state.get(insumos_key, {})
+
+    # ──────────────────────────────────────────────
+    # Categorías y Lista de Insumos
+    # ──────────────────────────────────────────────
 
     categorias = {
         "Insumos para almacenar": ["Frascos estériles"],
@@ -67,7 +87,8 @@ def render():
                 unidad = st.text_input(
                     f"Unidad de medida para {insumo}",
                     value=item_data.get("unidad", ""),
-                    key=f"{categoria}_{insumo}_unidad"
+                    key=f"{categoria}_{insumo}_unidad",
+                    help="Ej.: frascos, litros, cajas, paquetes"
                 )
 
                 cantidad = st.number_input(
@@ -86,6 +107,7 @@ def render():
 
                 if categoria not in insumos_data:
                     insumos_data[categoria] = {}
+
                 insumos_data[categoria][insumo] = {
                     "unidad": unidad.strip(),
                     "cantidad": cantidad,
@@ -93,24 +115,24 @@ def render():
                 }
 
     # ──────────────────────────────────────────────
-    # Cálculo de Completitud (💡 Corregido aquí)
+    # Validación de Completitud
     # ──────────────────────────────────────────────
 
-    def check_has_data(data):
+    def has_valid_data(data):
         return any(
-            any(item.get("cantidad", 0) > 0 or item.get("costo", 0) > 0 for item in categoria.values())
-            for categoria in data.values()
+            any(item.get("cantidad", 0) > 0 or item.get("costo", 0) > 0 for item in cat.values())
+            for cat in data.values()
         )
 
-    st.session_state[completion_flag] = check_has_data(insumos_data)
+    st.session_state[completion_flag] = has_valid_data(insumos_data)
 
     # ──────────────────────────────────────────────
-    # Guardar Sección
+    # Botón de Guardado
     # ──────────────────────────────────────────────
 
     if st.button("💾 Guardar sección - Insumos Mensuales"):
         st.session_state[insumos_key] = insumos_data
-        st.session_state[completion_flag] = check_has_data(insumos_data)
+        st.session_state[completion_flag] = has_valid_data(insumos_data)
 
         flat_data = flatten_session_state(st.session_state)
         success = append_or_update_row(flat_data)
@@ -125,8 +147,8 @@ def render():
             st.error("❌ Error al guardar. Por favor intente nuevamente.")
 
     # ──────────────────────────────────────────────
-    # Resumen de Datos Guardados
+    # Resumen Visual de Datos Guardados
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver resumen de datos guardados"):
+    with st.expander("🔍 Ver resumen de datos guardados en esta sección"):
         st.write(insumos_data)

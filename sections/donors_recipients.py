@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
+from utils.ui_styles import render_info_box, render_data_protection_box
 
 # 🔐 Safe conversion helpers
 def safe_int(value, default=0):
@@ -17,15 +18,32 @@ def safe_float(value, default=0.0):
 
 
 def render():
-    st.header("3. Donantes y Receptores")
+    st.header("3. 👩‍🍼 Donantes y Receptores")
 
-    st.markdown("""
-    > ℹ️ **Instrucciones:**  
-    Registre la información sobre donantes, volumen recolectado y receptores.  
-    Si algún dato no aplica a su institución, por favor registre **0**.
+    # ──────────────────────────────────────────────
+    # Instrucciones Visuales con ejemplos y guía
+    # ──────────────────────────────────────────────
 
-    > 🔐 **Nota:** La información está protegida por el derecho fundamental de **Habeas Data** (Ley 1581 de 2012).
-    """)
+    st.markdown(render_info_box("""
+    > ℹ️ **¿Qué información debe registrar aquí?**  
+    En esta sección se recopila información sobre:
+    - Número promedio de **donantes activas** por mes.
+    - Volumen promedio de leche recolectada.
+    - Porcentaje de **origen** de la leche.
+    - Información sobre **pasteurización**, receptores y distribución.
+
+    > 📝 **Ejemplos prácticos:**  
+    - Donantes activas: *12 donantes/mes*  
+    - Volumen recolectado: *8,500 ml/mes*  
+    - Porcentaje origen: *Institución 40%*, *Domicilio 50%*, *Centros 10%*.
+
+    > ➕ Si algún campo no aplica, por favor ingrese **0** o seleccione **No aplica**.
+    """), unsafe_allow_html=True)
+
+    st.markdown(render_data_protection_box("""
+    > 🔐 **Nota legal:**  
+    La información está protegida por la **Ley 1581 de 2012 (Habeas Data)** y se usará únicamente para los fines autorizados por el IETS.
+    """), unsafe_allow_html=True)
 
     prefix = "donantes_receptores__"
     completion_flag = prefix + "completed"
@@ -40,15 +58,19 @@ def render():
         donantes_mes = st.number_input(
             "👥 Número promedio de donantes activas por mes",
             min_value=0,
-            value=safe_int(data.get(prefix + "donantes_mes", 0))
+            value=safe_int(data.get(prefix + "donantes_mes", 0)),
+            help="Ejemplo: 12"
         )
+        st.caption("_Ejemplo: 12 donantes activas por mes._")
 
         volumen_mes_ml = st.number_input(
             "🍼 Volumen promedio de leche recolectada por mes (ml)",
             min_value=0.0,
             value=safe_float(data.get(prefix + "volumen_mes", 0.0)),
-            step=10.0
+            step=10.0,
+            help="Ejemplo: 8,500 ml"
         )
+        st.caption("_Ejemplo: 8,500 ml recolectados mensualmente._")
 
         # ──────────────────────────────────────────────
         # Porcentaje de origen de la leche
@@ -58,10 +80,10 @@ def render():
 
         pct_inst = st.slider("🏥 Recolectada en la institución (%)", 0, 100, value=safe_int(data.get(prefix + "pct_inst", 0)))
         pct_dom = st.slider("🏠 Recolectada en domicilio de la donante (%)", 0, 100, value=safe_int(data.get(prefix + "pct_dom", 0)))
-        pct_centros = st.slider("🏬 Recolectada en centros de recolección externos (%)", 0, 100, value=safe_int(data.get(prefix + "pct_centros", 0)))
+        pct_centros = st.slider("🏬 Recolectada en centros externos (%)", 0, 100, value=safe_int(data.get(prefix + "pct_centros", 0)))
 
         total_pct = pct_inst + pct_dom + pct_centros
-        st.info(f"🔢 **Total actual:** {total_pct} % (debe ser 100%)")
+        st.info(f"🔢 **Total actual:** {total_pct}% (debe ser exactamente 100%)")
 
         # ──────────────────────────────────────────────
         # Pasteurización (condicional)
@@ -80,8 +102,10 @@ def render():
                 "Volumen promedio de leche pasteurizada por mes (ml)",
                 min_value=0.0,
                 value=safe_float(data.get(prefix + "volumen_pasteurizada", 0.0)),
-                step=10.0
+                step=10.0,
+                help="Ejemplo: 6,000 ml pasteurizados por mes."
             )
+            st.caption("_Ejemplo: 6,000 ml pasteurizados mensualmente._")
 
         # ──────────────────────────────────────────────
         # Receptores y volumen distribuido
@@ -90,15 +114,19 @@ def render():
         receptores_mes = st.number_input(
             "👶 Número promedio de receptores activos por mes",
             min_value=0,
-            value=safe_int(data.get(prefix + "receptores_mes", 0))
+            value=safe_int(data.get(prefix + "receptores_mes", 0)),
+            help="Ejemplo: 8 receptores activos"
         )
+        st.caption("_Ejemplo: 8 receptores mensuales._")
 
         leche_distribuida_ml = st.number_input(
             "🚚 Volumen promedio de leche distribuida por mes (ml)",
             min_value=0.0,
             value=safe_float(data.get(prefix + "leche_distribuida", 0.0)),
-            step=10.0
+            step=10.0,
+            help="Ejemplo: 7,500 ml"
         )
+        st.caption("_Ejemplo: 7,500 ml distribuidos mensualmente._")
 
         # ──────────────────────────────────────────────
         # Submit Button
@@ -107,7 +135,7 @@ def render():
         submitted = st.form_submit_button("💾 Guardar sección - Donantes y Receptores")
 
     # ──────────────────────────────────────────────
-    # Validación y guardado
+    # Validación y Guardado
     # ──────────────────────────────────────────────
 
     if submitted:
@@ -138,15 +166,16 @@ def render():
                 st.success("✅ Datos de donantes y receptores guardados exitosamente.")
                 if "section_index" in st.session_state and st.session_state.section_index < 9:
                     st.session_state.section_index += 1
+                    st.session_state.navigation_triggered = True
                     st.rerun()
             else:
                 st.error("❌ Error al guardar los datos. Intente nuevamente.")
 
     # ──────────────────────────────────────────────
-    # Expander para datos guardados
+    # Expander: Ver resumen de datos guardados
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver datos guardados en esta sección"):
+    with st.expander("🔍 Ver resumen de datos guardados"):
         st.write({
             "Donantes activas/mes": safe_int(data.get(prefix + "donantes_mes", 0)),
             "Volumen recolectado (ml)": safe_float(data.get(prefix + "volumen_mes", 0.0)),

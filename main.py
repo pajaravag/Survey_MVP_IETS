@@ -1,5 +1,4 @@
 import streamlit as st
-from PIL import Image
 
 # ──────────────────────────────────────────────
 # Import Local Modules
@@ -11,17 +10,11 @@ from sections import (
     transport, quality, depreciation
 )
 
-from utils.state_manager import (
-    compute_progress,
-    flatten_session_state
-)
-
-from utils.sheet_io import (
-    load_existing_data,
-    append_or_update_row
-)
-
-from config import SURVEY_SECTIONS, INSTRUCTIVO_URL
+from utils.state_manager import compute_progress, flatten_session_state
+from utils.sheet_io import load_existing_data, append_or_update_row
+from utils.ui_styles import render_info_box
+from utils.ui_layout import render_header, render_footer
+from config import INSTRUCTIVO_URL
 
 # ──────────────────────────────────────────────
 # Page Configuration
@@ -29,19 +22,17 @@ from config import SURVEY_SECTIONS, INSTRUCTIVO_URL
 
 st.set_page_config(page_title="Encuesta BLH", layout="wide")
 
-col_logo, col_title = st.columns([1, 5])
-with col_logo:
-    st.image("assets/Logo.png", width=100)
+# Header Institucional
+render_header()
 
-with col_title:
-    st.title("Formulario para Bancos de Leche Humana (BLH)")
-    st.markdown("Complete cada sección. Puede guardar su progreso y continuar más tarde.")
-    st.markdown(
-        f"> **Nota:** La información recopilada está protegida por el derecho fundamental de **Habeas Data** según la Constitución Política de Colombia y la Ley 1581 de 2012. El uso de estos datos debe ceñirse estrictamente a los fines autorizados. Consulte el [Instructivo aquí]({INSTRUCTIVO_URL})."
-    )
+# Introducción
+st.markdown(render_info_box(f"""
+Complete cada sección. Puede guardar su progreso y continuar más tarde.<br><br>
+<strong>Nota:</strong> La información está protegida por el derecho fundamental de <strong>Habeas Data</strong> (Ley 1581 de 2012). Consulte el <a href='{INSTRUCTIVO_URL}' target='_blank'>Instructivo aquí</a>.
+"""), unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────
-# Section Definitions (Navigation & Rendering)
+# Secciones
 # ──────────────────────────────────────────────
 
 section_definitions = [
@@ -58,7 +49,7 @@ section_definitions = [
 ]
 
 # ──────────────────────────────────────────────
-# Identification Section (Required First Step)
+# Identificación Inicial
 # ──────────────────────────────────────────────
 
 identification.render()
@@ -68,9 +59,7 @@ if "identificacion" not in st.session_state:
     st.stop()
 
 ips_id = st.session_state["identificacion"].get("ips_id", "").strip().lower()
-already_loaded = st.session_state.get("data_loaded", False)
-
-if ips_id and not already_loaded:
+if ips_id and not st.session_state.get("data_loaded", False):
     existing_data = load_existing_data(ips_id)
     if existing_data:
         widget_keys_to_skip = {"ips_id_input", "correo_responsable_input", "nombre_responsable_input"}
@@ -79,29 +68,22 @@ if ips_id and not already_loaded:
         st.info(f"📂 Datos previos restaurados para IPS: `{ips_id}`.")
     else:
         st.info("📝 No se encontraron datos previos para esta IPS.")
-
     st.session_state["data_loaded"] = True
     st.rerun()
-
-# ──────────────────────────────────────────────
-# Navigation State Initialization
-# ──────────────────────────────────────────────
 
 if "section_index" not in st.session_state:
     st.session_state.section_index = 0
 
 # ──────────────────────────────────────────────
-# Sidebar Navigation Menu
+# Sidebar Navegación
 # ──────────────────────────────────────────────
 
 with st.sidebar:
     st.markdown("### 📑 Navegación rápida")
-
     labels_with_status = [
         f"{'✅' if st.session_state.get(section['key'], False) else '🔲'} {section['label']}"
         for section in section_definitions
     ]
-
     selected_label = st.selectbox("Ir a sección", labels_with_status, index=st.session_state.section_index)
     selected_index = next(i for i, s in enumerate(section_definitions) if s["label"] in selected_label)
 
@@ -110,7 +92,7 @@ with st.sidebar:
         st.rerun()
 
 # ──────────────────────────────────────────────
-# Render Current Section
+# Render Sección Actual
 # ──────────────────────────────────────────────
 
 current_section = section_definitions[st.session_state.section_index]
@@ -118,16 +100,15 @@ st.subheader(current_section["label"])
 current_section["render"]()
 
 # ──────────────────────────────────────────────
-# Progress Bar (Global Progress)
+# Barra de Progreso Visual
 # ──────────────────────────────────────────────
 
-completion_flags = [s["key"] for s in section_definitions]
-completed_count, progress_percent = compute_progress(st.session_state, completion_flags)
+completed_count, progress_percent = compute_progress(st.session_state, [s["key"] for s in section_definitions])
 
-st.progress(progress_percent, text=f"{completed_count} de {len(completion_flags)} secciones completadas")
+st.progress(progress_percent, text=f"🔄 Progreso general: {completed_count} de {len(section_definitions)} secciones completadas")
 
 # ──────────────────────────────────────────────
-# Navigation Buttons (Previous / Next)
+# Botones Navegación
 # ──────────────────────────────────────────────
 
 col1, col2, _ = st.columns([1, 1, 6])
@@ -145,12 +126,11 @@ with col2:
             st.rerun()
 
 # ──────────────────────────────────────────────
-# Final Section Message & Global Save
+# Mensaje Final
 # ──────────────────────────────────────────────
 
 if st.session_state.section_index == len(section_definitions) - 1:
-    st.success("🎉 Ha llegado al final del formulario.")
-    st.markdown("Puede revisar cualquier sección usando el menú lateral o los botones de navegación.")
+    st.success("🎉 Ha llegado al final del formulario. Puede revisar cualquier sección antes de finalizar.")
     if st.button("⬅️ Volver al inicio"):
         st.session_state.section_index = 0
         st.rerun()
@@ -166,3 +146,10 @@ if st.button("Guardar encuesta como CSV y Google Sheets"):
         st.success(f"✅ Encuesta de `{ips_name}` guardada exitosamente.")
     else:
         st.error("❌ Error al guardar la encuesta. Por favor intente nuevamente.")
+
+# ──────────────────────────────────────────────
+# Footer Institucional
+# ──────────────────────────────────────────────
+
+st.markdown("<hr>", unsafe_allow_html=True)
+render_footer()

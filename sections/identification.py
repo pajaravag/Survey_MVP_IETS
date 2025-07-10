@@ -43,7 +43,7 @@ def render():
     # ──────────────────────────────────────────────
     with st.form("form_identificacion", clear_on_submit=False):
         ips_id = st.text_input(
-            "🏥 Código o nombre de la IPS (obligatorio)",
+            "🏥 Nombre de la IPS (obligatorio)",
             value=default_ips_id,
             key="ips_id_input",
             disabled=disable_edit,

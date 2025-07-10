@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
+from utils.ui_styles import render_info_box, render_data_protection_box
 
 # 🔐 Safe float conversion helper
 def safe_float(value, default=0.0):
@@ -11,17 +12,34 @@ def safe_float(value, default=0.0):
 
 
 def render():
-    st.header("7. Servicios Públicos del Banco de Leche Humana")
+    st.header("7. 💡 Servicios Públicos del Banco de Leche Humana (BLH)")
 
-    st.markdown("""
-    > ℹ️ **Instrucciones:**  
-    Por favor registre el **costo mensual promedio** en pesos colombianos (COP) de los servicios públicos vinculados al funcionamiento del Banco de Leche Humana (BLH).  
-    Si un servicio no aplica o no se incurre en costo, registre **0**.
+    # ──────────────────────────────────────────────
+    # Instrucciones Visuales
+    # ──────────────────────────────────────────────
 
-    Estos datos permitirán estimar los costos operativos del BLH para su análisis financiero.
+    st.markdown(render_info_box("""
+    > ℹ️ **¿Qué información debe registrar?**  
+    Por favor indique el **costo mensual promedio** (en pesos COP) de los **servicios públicos** necesarios para el funcionamiento del Banco de Leche Humana (BLH).  
+    Si un servicio no aplica, registre **0**.
 
-    > 🔐 **Nota:** La información está protegida conforme a la Ley 1581 de 2012 (**Habeas Data**).
-    """)
+    > 📝 **Ejemplo práctico:**  
+    - Energía eléctrica: *150,000 COP*  
+    - Agua y alcantarillado: *90,000 COP*  
+    - Telefonía e internet: *70,000 COP*
+
+    > 🔑 **Importancia:**  
+    Estos datos permitirán estimar los **costos operativos** del BLH y apoyar análisis de sostenibilidad.
+
+    """), unsafe_allow_html=True)
+
+    st.markdown(render_data_protection_box("""
+    > 🔒 La información suministrada será utilizada únicamente para los fines de este estudio y protegida conforme a la **Ley 1581 de 2012 (Habeas Data)**.
+    """), unsafe_allow_html=True)
+
+    # ──────────────────────────────────────────────
+    # Variables de Estado
+    # ──────────────────────────────────────────────
 
     prefix = "servicios_publicos__"
     completion_flag = prefix + "completed"
@@ -43,16 +61,17 @@ def render():
 
     for servicio in servicios:
         costo = st.number_input(
-            f"💰 {servicio} (costo mensual en $ COP)",
+            f"💰 {servicio} (Costo mensual en $ COP)",
             min_value=0.0,
             step=1000.0,
             value=safe_float(stored_data.get(servicio, 0.0)),
-            key=f"util_{servicio}"
+            key=f"util_{servicio}",
+            help=f"Ingrese el costo mensual promedio de {servicio}. Registre 0 si no aplica."
         )
         current_results[servicio] = costo
 
     # ──────────────────────────────────────────────
-    # Validación para Completitud
+    # Validación de Completitud para Progreso
     # ──────────────────────────────────────────────
 
     has_data = any(value > 0 for value in current_results.values())
@@ -76,7 +95,7 @@ def render():
                 st.session_state.navigation_triggered = True
                 st.rerun()
         else:
-            st.error("❌ Error al guardar los datos. Por favor verifique su conexión e intente nuevamente.")
+            st.error("❌ Error al guardar los datos. Por favor verifique la conexión e intente nuevamente.")
 
     # ──────────────────────────────────────────────
     # Expander: Visualización de Datos Guardados

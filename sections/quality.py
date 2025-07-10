@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
+from utils.ui_styles import render_info_box, render_data_protection_box
 
 # 🔐 Safe conversion helpers
 def safe_float(value, default=0.0):
@@ -17,18 +18,33 @@ def safe_int(value, default=0):
 
 
 def render():
-    st.header("9. Eficiencia, Calidad y Seguridad")
-
-    st.markdown("""
-    > ℹ️ **Instrucciones:**  
-    Registre la información relacionada con la **eficiencia, seguridad y calidad** del Banco de Leche Humana (BLH).  
-    Si un valor no aplica, registre **0** o seleccione **No aplica** según corresponda.
-
-    > 🔐 **Nota:** La información será tratada conforme a la Ley 1581 de 2012 (Habeas Data).
-    """)
+    st.header("9. ⚙️ Eficiencia, Calidad y Seguridad del BLH")
 
     # ──────────────────────────────────────────────
-    # Keys & Prior Values
+    # Instrucciones Visuales
+    # ──────────────────────────────────────────────
+
+    st.markdown(render_info_box("""
+    > ℹ️ **¿Por qué se solicita esta información?**  
+    Esta sección busca evaluar la **eficiencia operativa, la calidad y la seguridad** en la gestión de la leche humana dentro de su Banco de Leche Humana (BLH).
+
+    📝 **Incluya información como:**  
+    - Volumen de leche descartada.  
+    - Tiempo promedio desde la recolección hasta la distribución.  
+    - Realización de controles microbiológicos.
+
+    > 💡 **Ejemplo:**  
+    - Leche descartada: 200 mL/mes.  
+    - Tiempo de distribución: 2 días.  
+    - Control microbiológico: Sí, con 5 pruebas mensuales.
+    """), unsafe_allow_html=True)
+
+    st.markdown(render_data_protection_box("""
+    > 🔒 La información recopilada está protegida por la **Ley 1581 de 2012 (Habeas Data)** y será utilizada únicamente para fines del estudio.
+    """), unsafe_allow_html=True)
+
+    # ──────────────────────────────────────────────
+    # Variables & Datos Anteriores
     # ──────────────────────────────────────────────
 
     prefix = "calidad_seguridad__"
@@ -36,11 +52,11 @@ def render():
     prev_data = st.session_state.get(prefix + "data", {})
 
     # ──────────────────────────────────────────────
-    # Input Fields
+    # Registro de Indicadores de Calidad
     # ──────────────────────────────────────────────
 
     leche_descartada_ml = st.number_input(
-        "🍼 Volumen promedio de leche descartada (ml/mes)",
+        "🍼 Volumen promedio de leche descartada (mL/mes)",
         min_value=0.0, step=10.0,
         value=safe_float(prev_data.get("leche_descartada_ml", 0.0)),
         key=prefix + "leche_descartada"
@@ -64,14 +80,14 @@ def render():
     n_pruebas_micro = 0
     if control_micro == "Sí":
         n_pruebas_micro = st.number_input(
-            "Número promedio de pruebas microbiológicas realizadas por mes",
+            "🔬 Número promedio de pruebas microbiológicas realizadas por mes",
             min_value=0, step=1,
             value=safe_int(prev_data.get("n_pruebas_micro", 0)),
             key=prefix + "n_pruebas"
         )
 
     # ──────────────────────────────────────────────
-    # Completion Logic
+    # Validación de Completitud
     # ──────────────────────────────────────────────
 
     is_complete = (
@@ -83,7 +99,7 @@ def render():
     st.session_state[completion_flag] = is_complete
 
     # ──────────────────────────────────────────────
-    # Save Button with Validation
+    # Botón de Guardado con Feedback Visual
     # ──────────────────────────────────────────────
 
     if st.button("💾 Guardar sección - Eficiencia, Calidad y Seguridad"):
@@ -100,21 +116,22 @@ def render():
         success = append_or_update_row(flat_data)
 
         if success:
-            st.success("✅ Datos de eficiencia, calidad y seguridad guardados exitosamente.")
+            st.success("✅ Datos guardados correctamente.")
             if "section_index" in st.session_state and st.session_state.section_index < 9:
                 st.session_state.section_index += 1
+                st.session_state.navigation_triggered = True
                 st.rerun()
         else:
-            st.error("❌ Error al guardar los datos. Verifique su conexión e intente nuevamente.")
+            st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
 
     # ──────────────────────────────────────────────
-    # Review Section Data
+    # Visualización de Datos Guardados
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver datos guardados en esta sección"):
+    with st.expander("🔍 Ver resumen de datos guardados"):
         st.write({
-            "Volumen leche descartada (ml/mes)": leche_descartada_ml,
-            "Tiempo promedio recolección a distribución (días)": tiempo_distribucion_dias,
+            "Volumen leche descartada (mL/mes)": leche_descartada_ml,
+            "Tiempo promedio recolección → distribución (días)": tiempo_distribucion_dias,
             "Control microbiológico post-pasteurización": control_micro,
             "Número de pruebas microbiológicas/mes": n_pruebas_micro
         })
