@@ -175,8 +175,8 @@ Los datos se recopilan para fines de análisis económico y son tratados conform
     # Resumen Visual
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver Personal Exclusivo guardado"):
-        st.write(st.session_state.get(prefix_excl + "data", {}))
+    # with st.expander("🔍 Ver Personal Exclusivo guardado"):
+    #     st.write(st.session_state.get(prefix_excl + "data", {}))
 
-    with st.expander("🔍 Ver Personal Compartido guardado"):
-        st.write(st.session_state.get(prefix_comp + "data", {}))
+    # with st.expander("🔍 Ver Personal Compartido guardado"):
+    #     st.write(st.session_state.get(prefix_comp + "data", {}))

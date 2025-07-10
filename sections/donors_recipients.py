@@ -184,16 +184,16 @@ Los datos recopilados están protegidos por la **Ley 1581 de 2012 (Habeas Data)*
     # Resumen de Datos Guardados
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver resumen de datos guardados"):
-        st.write({
-            "Donantes activas/mes": safe_int(data.get(prefix + "donantes_mes", 0)),
-            "Volumen recolectado (ml)": safe_float(data.get(prefix + "volumen_mes", 0.0)),
-            "% En institución": safe_int(data.get(prefix + "pct_inst", 0)),
-            "% En domicilio": safe_int(data.get(prefix + "pct_dom", 0)),
-            "% En centros": safe_int(data.get(prefix + "pct_centros", 0)),
-            "¿Realiza pasteurización?": data.get(prefix + "pasteuriza", "No"),
-            "Volumen pasteurizada (ml)": safe_float(data.get(prefix + "volumen_pasteurizada", 0.0)),
-            "Receptores activos/mes": safe_int(data.get(prefix + "receptores_mes", 0)),
-            "Volumen distribuido (ml)": safe_float(data.get(prefix + "leche_distribuida", 0.0)),
-            "Total % Origen": total_pct
-        })
+    # with st.expander("🔍 Ver resumen de datos guardados"):
+    #     st.write({
+    #         "Donantes activas/mes": safe_int(data.get(prefix + "donantes_mes", 0)),
+    #         "Volumen recolectado (ml)": safe_float(data.get(prefix + "volumen_mes", 0.0)),
+    #         "% En institución": safe_int(data.get(prefix + "pct_inst", 0)),
+    #         "% En domicilio": safe_int(data.get(prefix + "pct_dom", 0)),
+    #         "% En centros": safe_int(data.get(prefix + "pct_centros", 0)),
+    #         "¿Realiza pasteurización?": data.get(prefix + "pasteuriza", "No"),
+    #         "Volumen pasteurizada (ml)": safe_float(data.get(prefix + "volumen_pasteurizada", 0.0)),
+    #         "Receptores activos/mes": safe_int(data.get(prefix + "receptores_mes", 0)),
+    #         "Volumen distribuido (ml)": safe_float(data.get(prefix + "leche_distribuida", 0.0)),
+    #         "Total % Origen": total_pct
+    #     })

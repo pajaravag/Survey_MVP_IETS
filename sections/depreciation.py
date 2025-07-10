@@ -123,9 +123,9 @@ La información será utilizada únicamente con fines analíticos y está proteg
     # Resumen de Datos Guardados
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver resumen de datos guardados"):
-        st.write({
-            "Valor mensual depreciación (COP)": valor_mensual,
-            "Porcentaje anual de depreciación (%)": porcentaje,
-            "Presupuesto anual mantenimiento (COP)": mantenimiento_anual
-        })
+    # with st.expander("🔍 Ver resumen de datos guardados"):
+    #     st.write({
+    #         "Valor mensual depreciación (COP)": valor_mensual,
+    #         "Porcentaje anual de depreciación (%)": porcentaje,
+    #         "Presupuesto anual mantenimiento (COP)": mantenimiento_anual
+    #     })

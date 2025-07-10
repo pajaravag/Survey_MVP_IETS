@@ -109,10 +109,10 @@ La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y ser
     # Resumen Visual de Datos Guardados
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver resumen de datos guardados"):
-        st.write({
-            "Nombre del establecimiento": st.session_state.get(prefix + "nombre_inst", ""),
-            "Tipo de institución": st.session_state.get(prefix + "tipo_inst", []),
-            "Año de implementación": st.session_state.get(prefix + "anio_impl", ""),
-            "Sección completada": st.session_state.get(completion_flag, False)
-        })
+    # with st.expander("🔍 Ver resumen de datos guardados"):
+    #     st.write({
+    #         "Nombre del establecimiento": st.session_state.get(prefix + "nombre_inst", ""),
+    #         "Tipo de institución": st.session_state.get(prefix + "tipo_inst", []),
+    #         "Año de implementación": st.session_state.get(prefix + "anio_impl", ""),
+    #         "Sección completada": st.session_state.get(completion_flag, False)
+    #     })

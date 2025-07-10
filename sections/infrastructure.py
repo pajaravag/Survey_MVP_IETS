@@ -129,5 +129,5 @@ La información proporcionada está protegida bajo la **Ley 1581 de 2012 (Habeas
     # Expander: Ver resumen
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver resumen de datos guardados en esta sección"):
-        st.write(resultados)
+    # with st.expander("🔍 Ver resumen de datos guardados en esta sección"):
+    #     st.write(resultados)

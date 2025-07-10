@@ -133,10 +133,10 @@ Los datos están protegidos por la **Ley 1581 de 2012 (Habeas Data)** y serán u
     # Visualización de Datos Guardados
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver resumen de datos guardados"):
-        st.write({
-            "Volumen leche descartada (mL/mes)": leche_descartada_ml,
-            "Tiempo promedio recolección → distribución (días)": tiempo_distribucion_dias,
-            "Control microbiológico post-pasteurización": control_micro,
-            "Número de pruebas microbiológicas/mes": n_pruebas_micro
-        })
+    # with st.expander("🔍 Ver resumen de datos guardados"):
+    #     st.write({
+    #         "Volumen leche descartada (mL/mes)": leche_descartada_ml,
+    #         "Tiempo promedio recolección → distribución (días)": tiempo_distribucion_dias,
+    #         "Control microbiológico post-pasteurización": control_micro,
+    #         "Número de pruebas microbiológicas/mes": n_pruebas_micro
+    #     })

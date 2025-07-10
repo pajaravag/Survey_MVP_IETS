@@ -110,8 +110,8 @@ La información recopilada está protegida bajo la **Ley 1581 de 2012 (Habeas Da
     # Resumen en Expander
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver resumen de procesos seleccionados"):
-        st.write({
-            "Procesos seleccionados": st.session_state.get(procesos_key, []),
-            "Otros procesos": st.session_state.get(otros_key, "")
-        })
+    # with st.expander("🔍 Ver resumen de procesos seleccionados"):
+    #     st.write({
+    #         "Procesos seleccionados": st.session_state.get(procesos_key, []),
+    #         "Otros procesos": st.session_state.get(otros_key, "")
+    #     })

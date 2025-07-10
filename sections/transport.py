@@ -209,11 +209,11 @@ La información se utilizará exclusivamente para los fines del estudio, en cump
     # Resumen de Datos Guardados
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver modalidades de recolección guardadas"):
-        st.write(modalidades)
+    # with st.expander("🔍 Ver modalidades de recolección guardadas"):
+    #     st.write(modalidades)
 
-    with st.expander("🔍 Ver equipos de transporte guardados"):
-        st.write(equipos_data if usa_equipos == "Sí" else {})
+    # with st.expander("🔍 Ver equipos de transporte guardados"):
+    #     st.write(equipos_data if usa_equipos == "Sí" else {})
 
-    with st.expander("🔍 Ver detalle de zonas guardado"):
-        st.write(detalle_zonas)
+    # with st.expander("🔍 Ver detalle de zonas guardado"):
+    #     st.write(detalle_zonas)

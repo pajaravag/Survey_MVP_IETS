@@ -153,5 +153,5 @@ La información será utilizada exclusivamente para el análisis de costos opera
     # Resumen de Datos Guardados
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver resumen de datos guardados en esta sección"):
-        st.write(insumos_data)
+    # with st.expander("🔍 Ver resumen de datos guardados en esta sección"):
+    #     st.write(insumos_data)

@@ -100,5 +100,5 @@ La información será utilizada exclusivamente para fines de análisis económic
     # Expander: Resumen de Datos Guardados
     # ──────────────────────────────────────────────
 
-    with st.expander("🔍 Ver resumen de datos guardados"):
-        st.write(st.session_state.get(data_key, current_results))
+    # with st.expander("🔍 Ver resumen de datos guardados"):
+    #     st.write(st.session_state.get(data_key, current_results))
