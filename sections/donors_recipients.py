@@ -18,7 +18,7 @@ def safe_float(value, default=0.0):
 
 
 def render():
-    st.header("2. 👩‍🍼 Donantes y Receptores del Banco de Leche Humana (Preguntas 6 a 11)")
+    st.header("2. 👩‍🍼 Donantes y Receptores del Banco de Leche Humana (Preguntas 6 a 10)")
 
     # ──────────────────────────────────────────────
     # Instrucciones Visuales
@@ -135,17 +135,6 @@ Si algún dato no aplica, registre **0** y continúe.
             help="Ejemplo: 7.500 ml"
         )
 
-        # Pregunta 1️⃣1️⃣ (Nueva) Confirmación de volumen distribuido
-        st.subheader("1️⃣1️⃣ Confirme el volumen promedio mensual de leche distribuida (mililitros):")
-
-        confirmacion_distribuido_ml = st.number_input(
-            "Confirme el volumen promedio mensual de leche distribuida (ml):",
-            min_value=0.0,
-            value=safe_float(data.get(prefix + "confirmacion_distribuida", leche_distribuida_ml)),
-            step=10.0,
-            help="Este valor debe coincidir con el volumen efectivamente distribuido. Use 0 si no aplica."
-        )
-
         # ──────────────────────────────────────────────
         # Botón de Guardado con Validación
         # ──────────────────────────────────────────────
@@ -161,7 +150,6 @@ Si algún dato no aplica, registre **0** y continúe.
         st.session_state[prefix + "pasteuriza"] = pasteuriza
         st.session_state[prefix + "volumen_pasteurizada"] = volumen_pasteurizada_ml
         st.session_state[prefix + "leche_distribuida"] = leche_distribuida_ml
-        st.session_state[prefix + "confirmacion_distribuida"] = confirmacion_distribuido_ml
 
         st.session_state[completion_flag] = True
 

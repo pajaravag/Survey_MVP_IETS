@@ -10,7 +10,6 @@ def render():
     # ──────────────────────────────────────────────
     # Instrucciones Visuales
     # ──────────────────────────────────────────────
-
     st.markdown(render_info_box("""
 **ℹ️ ¿Por qué es importante esta sección?**  
 Esta sección permite identificar su institución y comprender las características clave de su Banco de Leche Humana (BLH).  
@@ -24,82 +23,56 @@ Por favor diligencie todos los campos de forma **completa y precisa**.
 La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y será utilizada exclusivamente con fines de análisis autorizados por el **Instituto de Evaluación Tecnológica en Salud (IETS)**.
 """), unsafe_allow_html=True)
 
+    st.markdown(render_compact_example_box("""
+📝 **Ejemplo:**  
+- Institución: Hospital Básico San Gabriel  
+- Tipo: Hospital público  
+- Año: 2008  
+- Procesos: Captación, Recepción, Pasteurización
+"""), unsafe_allow_html=True)
+
     # ──────────────────────────────────────────────
     # Prefijos y Estado
     # ──────────────────────────────────────────────
-
     prefix = "datos_generales__"
     completion_flag = prefix + "completed"
 
     # ──────────────────────────────────────────────
     # Pregunta 1️⃣ Nombre de la Institución
     # ──────────────────────────────────────────────
-
     nombre = st.text_input(
-        "1️⃣ 🏥 Nombre completo de la institución:",
+        "1️⃣ 🏥 Nombre completo y oficial de la institución:",
         value=st.session_state.get(prefix + "nombre_inst", ""),
         help="Ejemplo: Hospital Básico San Gabriel"
     )
-    st.caption("_Ejemplo: Hospital Básico San Gabriel_")
 
     # ──────────────────────────────────────────────
     # Pregunta 2️⃣ Tipo de Institución
     # ──────────────────────────────────────────────
-
     tipo_inst_options = ["Hospital público", "Clínica privada", "Mixta"]
     tipo_inst_selected = st.multiselect(
-        "2️⃣ 🏷️ Tipo de institución:",
+        "2️⃣ 🏷️ Tipo de institución (marque con una “X”):",
         tipo_inst_options,
         default=st.session_state.get(prefix + "tipo_inst", []),
-        help="Puede seleccionar más de una opción si aplica."
+        help="Seleccione al menos una opción que describa el tipo de institución."
     )
-    st.caption("_Ejemplo: Hospital público_")
 
     # ──────────────────────────────────────────────
     # Pregunta 3️⃣ Año de Implementación
     # ──────────────────────────────────────────────
-
     anio_impl = st.text_input(
         "3️⃣ 📅 Año de implementación del BLH (formato AAAA):",
         value=st.session_state.get(prefix + "anio_impl", ""),
         help="Ejemplo: 2008"
     )
-    st.caption("_Ejemplo: 2008_")
 
     # ──────────────────────────────────────────────
-    # Pregunta 4️⃣ Persona Responsable
+    # Pregunta 4️⃣ (Eliminada por redundancia)
     # ──────────────────────────────────────────────
-
-    st.subheader("4️⃣ 👤 Persona responsable del diligenciamiento del formulario")
-
-    responsable_nombre = st.text_input(
-        "Nombre completo:",
-        value=st.session_state.get(prefix + "responsable_nombre", ""),
-        help="Ejemplo: María González"
-    )
-
-    responsable_cargo = st.text_input(
-        "Cargo:",
-        value=st.session_state.get(prefix + "responsable_cargo", ""),
-        help="Ejemplo: Coordinadora BLH"
-    )
-
-    responsable_correo = st.text_input(
-        "Correo electrónico:",
-        value=st.session_state.get(prefix + "responsable_correo", ""),
-        help="Ejemplo: maria.gonzalez@institucion.gov.co"
-    )
-
-    responsable_telefono = st.text_input(
-        "Teléfono de contacto:",
-        value=st.session_state.get(prefix + "responsable_telefono", ""),
-        help="Ejemplo: 3001234567"
-    )
 
     # ──────────────────────────────────────────────
     # Pregunta 5️⃣ Procesos Estandarizados
     # ──────────────────────────────────────────────
-
     st.subheader("5️⃣ 🔄 Procesos estandarizados realizados por su BLH")
 
     procesos_key = prefix + "procesos"
@@ -133,12 +106,10 @@ La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y ser
         value=otros_previos,
         placeholder="Describa aquí procesos adicionales no incluidos en la lista anterior."
     )
-    st.caption("_Ejemplo: Educación comunitaria, talleres para madres donantes._")
 
     # ──────────────────────────────────────────────
     # Validación y Guardado
     # ──────────────────────────────────────────────
-
     if st.button("💾 Guardar sección - Datos Generales"):
         errores = []
 
@@ -148,14 +119,6 @@ La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y ser
             errores.append("✅ Tipo de institución")
         if not anio_impl.strip().isdigit() or len(anio_impl.strip()) != 4:
             errores.append("✅ Año de implementación (4 dígitos)")
-        if not responsable_nombre.strip():
-            errores.append("✅ Nombre de la persona responsable")
-        if not responsable_cargo.strip():
-            errores.append("✅ Cargo de la persona responsable")
-        if not responsable_correo.strip():
-            errores.append("✅ Correo electrónico de la persona responsable")
-        if not responsable_telefono.strip():
-            errores.append("✅ Teléfono de contacto de la persona responsable")
         if not seleccionados and not otros_procesos.strip():
             errores.append("✅ Debe seleccionar al menos un proceso o escribir un proceso adicional")
 
@@ -167,10 +130,6 @@ La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y ser
             st.session_state[prefix + "nombre_inst"] = nombre.strip()
             st.session_state[prefix + "tipo_inst"] = tipo_inst_selected
             st.session_state[prefix + "anio_impl"] = anio_impl.strip()
-            st.session_state[prefix + "responsable_nombre"] = responsable_nombre.strip()
-            st.session_state[prefix + "responsable_cargo"] = responsable_cargo.strip()
-            st.session_state[prefix + "responsable_correo"] = responsable_correo.strip()
-            st.session_state[prefix + "responsable_telefono"] = responsable_telefono.strip()
             st.session_state[procesos_key] = seleccionados
             st.session_state[otros_key] = otros_procesos.strip()
             st.session_state[completion_flag] = True

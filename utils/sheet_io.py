@@ -1,22 +1,14 @@
 import streamlit as st
 import pandas as pd
 from utils.google_sheets_client import get_worksheet, get_google_sheet_df
-from config import MASTER_CSV  # ✅ Para guardar backup local
+from config import MASTER_CSV  # ✅ Ruta local para respaldo
 
 # ──────────────────────────────────────────────
 # 1️⃣ Cargar datos existentes por IPS
 # ──────────────────────────────────────────────
-
 def load_existing_data(ips_id, sheet_name="Sheet1"):
     """
     Carga los datos previamente guardados para un IPS específico desde Google Sheets.
-
-    Args:
-        ips_id (str): Identificador único de la IPS (case-insensitive).
-        sheet_name (str): Nombre de la hoja. Por defecto "Sheet1".
-
-    Retorna:
-        dict | None: Diccionario de datos si existe, None si no hay coincidencia.
     """
     df = get_google_sheet_df(sheet_name=sheet_name)
 
@@ -33,17 +25,9 @@ def load_existing_data(ips_id, sheet_name="Sheet1"):
 # ──────────────────────────────────────────────
 # 2️⃣ Guardar o actualizar fila en Google Sheets y CSV
 # ──────────────────────────────────────────────
-
 def append_or_update_row(flat_data: dict, sheet_name="Sheet1"):
     """
     Guarda o actualiza los datos de la encuesta en Google Sheets y en archivo CSV local.
-
-    Args:
-        flat_data (dict): Diccionario aplanado con todas las claves y valores.
-        sheet_name (str): Nombre de la hoja en Google Sheets.
-
-    Retorna:
-        bool: True si la operación fue exitosa, False si hubo error.
     """
     try:
         sheet = get_worksheet(sheet_name=sheet_name)
@@ -56,14 +40,17 @@ def append_or_update_row(flat_data: dict, sheet_name="Sheet1"):
         headers = sheet.row_values(1)
         existing_rows = sheet.get_all_records()
 
-        missing_headers = [key for key in flat_data.keys() if key not in headers]
+        # Agregar nuevas columnas si faltan
+        missing_headers = [key for key in flat_data if key not in headers]
         if missing_headers:
             headers += missing_headers
             sheet.resize(rows=sheet.row_count, cols=len(headers))
             sheet.update("A1", [headers])
 
+        # Construir fila completa con orden
         full_row = [flat_data.get(col, "") for col in headers]
 
+        # Buscar si ya existe la IPS
         for idx, row in enumerate(existing_rows):
             existing_id = str(row.get("identificacion__ips_id", "")).strip().lower()
             if existing_id == ips_id:
@@ -71,6 +58,7 @@ def append_or_update_row(flat_data: dict, sheet_name="Sheet1"):
                 _save_local_backup(flat_data, headers)
                 return True
 
+        # Si no existe, agregar fila nueva
         sheet.append_row(full_row, value_input_option="USER_ENTERED")
         _save_local_backup(flat_data, headers)
         return True
@@ -82,40 +70,54 @@ def append_or_update_row(flat_data: dict, sheet_name="Sheet1"):
 
 
 # ──────────────────────────────────────────────
-# 3️⃣ Guardar copia local en CSV
+# 3️⃣ Guardar copia local en CSV (respaldo)
 # ──────────────────────────────────────────────
-
 def _save_local_backup(flat_data, headers):
     """
     Guarda una copia local de los datos en un CSV de respaldo.
-
-    Args:
-        flat_data (dict): Datos a guardar.
-        headers (list): Lista completa de encabezados.
     """
     try:
         try:
-            existing_df = pd.read_csv(MASTER_CSV)
+            existing_df = pd.read_csv(MASTER_CSV, dtype=str)
         except FileNotFoundError:
             existing_df = pd.DataFrame(columns=headers)
 
-        ips_id = flat_data.get("identificacion__ips_id", "").strip().lower()
-        if ips_id:
-            if "identificacion__ips_id" not in existing_df.columns:
-                existing_df["identificacion__ips_id"] = ""
+        # Normalizar ID
+        ips_id = str(flat_data.get("identificacion__ips_id", "")).strip().lower()
+        if not ips_id:
+            return
 
-            existing_df["identificacion__ips_id"] = existing_df["identificacion__ips_id"].fillna("").astype(str).str.lower()
-            match_idx = existing_df[existing_df["identificacion__ips_id"] == ips_id].index
+        # Asegurar columna clave
+        if "identificacion__ips_id" not in existing_df.columns:
+            existing_df["identificacion__ips_id"] = ""
 
-            new_row = {col: flat_data.get(col, "") for col in headers}
+        existing_df["identificacion__ips_id"] = existing_df["identificacion__ips_id"].fillna("").astype(str).str.lower()
+        match_idx = existing_df[existing_df["identificacion__ips_id"] == ips_id].index
 
-            if not match_idx.empty:
-                existing_df.loc[match_idx[0]] = new_row
-            else:
-                existing_df = pd.concat([existing_df, pd.DataFrame([new_row])], ignore_index=True)
+        # Preparar fila nueva forzada a string
+        new_row = {col: str(flat_data.get(col, "")) for col in headers}
 
-            existing_df = existing_df[headers]  # Garantizar orden de columnas
-            existing_df.to_csv(MASTER_CSV, index=False)
+        # Validar si hay cambio de responsable
+        prev_nombre = str(existing_df.loc[match_idx[0]].get("identificacion__nombre_responsable", "")).strip() if not match_idx.empty else ""
+        nuevo_nombre = str(new_row.get("identificacion__nombre_responsable", "")).strip()
+
+        if prev_nombre and nuevo_nombre and prev_nombre != nuevo_nombre:
+            st.warning(f"⚠️ Se detectó un cambio de responsable para esta IPS:\n- Antes: **{prev_nombre}**\n- Ahora: **{nuevo_nombre}**")
+
+        if not match_idx.empty:
+            for col in headers:
+                existing_df.at[match_idx[0], col] = new_row[col]
+        else:
+            new_row_df = pd.DataFrame([new_row])
+            existing_df = pd.concat([existing_df, new_row_df], ignore_index=True)
+
+        # Asegurar orden de columnas
+        for col in headers:
+            if col not in existing_df.columns:
+                existing_df[col] = ""
+        existing_df = existing_df[headers]
+
+        existing_df.to_csv(MASTER_CSV, index=False)
 
     except Exception as e:
         st.warning("⚠️ Error al guardar la copia local en CSV.")
