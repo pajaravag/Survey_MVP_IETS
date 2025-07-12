@@ -2,7 +2,6 @@ import os
 import pandas as pd
 from datetime import datetime
 
-
 # ──────────────────────────────────────────────
 # 1️⃣ Aplanar estado de sesión para exportación
 # ──────────────────────────────────────────────
@@ -11,9 +10,9 @@ def flatten_session_state(d, parent_key='', sep='__'):
     """
     Aplana recursivamente un diccionario anidado (ej: st.session_state) para exportación en CSV o Google Sheets.
 
-    - Convierte listas en cadenas separadas por comas.
+    - Convierte listas de diccionarios en JSON-like strings.
+    - Convierte listas simples en cadenas separadas por comas.
     - Convierte booleanos en "Sí" / "No" para mejor legibilidad.
-    - Mantiene compatibilidad con tipos simples.
 
     Args:
         d (dict): Diccionario aplanar (ej: st.session_state).
@@ -29,7 +28,11 @@ def flatten_session_state(d, parent_key='', sep='__'):
         if isinstance(v, dict):
             items.update(flatten_session_state(v, new_key, sep=sep))
         elif isinstance(v, list):
-            items[new_key] = ", ".join(map(str, v))
+            if all(isinstance(i, dict) for i in v):
+                # Convertir listas de diccionarios a string JSON-like
+                items[new_key] = str(v)
+            else:
+                items[new_key] = ", ".join(map(str, v))
         elif isinstance(v, bool):
             items[new_key] = "Sí" if v else "No"
         else:

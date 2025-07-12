@@ -1,9 +1,10 @@
 import streamlit as st
+import pandas as pd
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
-from utils.ui_styles import render_info_box, render_data_protection_box, render_compact_example_box
+from utils.ui_styles import render_info_box, render_compact_example_box
 
-# 🔐 Safe conversion helpers
+# 🔐 Conversión segura
 def safe_float(value, default=0.0):
     try:
         return float(value)
@@ -16,116 +17,116 @@ def safe_int(value, default=0):
     except (ValueError, TypeError):
         return default
 
-
 def render():
-    st.header("10. 💰 Depreciación e Impuestos del Banco de Leche Humana (BLH)")
-
-    # ──────────────────────────────────────────────
-    # Instrucciones Visuales
-    # ──────────────────────────────────────────────
-
-    st.markdown(render_info_box("""
-**¿Qué información debe registrar en esta sección?**  
-Por favor registre los siguientes datos asociados a los costos de depreciación y mantenimiento de los equipos e infraestructura del Banco de Leche Humana (BLH):
-- **Valor mensual de depreciación**
-- **Porcentaje anual de depreciación**
-- **Presupuesto anual de mantenimiento**
-
-Estos datos permitirán estimar los costos reales de operación del BLH.
-
-    """), unsafe_allow_html=True)
-
-    st.markdown(render_compact_example_box("""
-📝 **Ejemplo práctico:**  
-- Depreciación mensual: *50,000 COP*  
-- Porcentaje de depreciación anual: *20%*  
-- Mantenimiento anual estimado: *300,000 COP*
-    """), unsafe_allow_html=True)
-
-    st.markdown(render_data_protection_box("""
-🔐 **Nota legal:**  
-La información será utilizada únicamente con fines analíticos y está protegida por la **Ley 1581 de 2012 (Habeas Data)**.
-    """), unsafe_allow_html=True)
-
-    # ──────────────────────────────────────────────
-    # Claves y Valores Anteriores
-    # ──────────────────────────────────────────────
+    st.header("9. 💰 Depreciación, Mantenimiento e Impuestos del BLH (Preguntas 28 a 31)")
 
     prefix = "depreciacion__"
     completion_flag = prefix + "completed"
     prev_data = st.session_state.get(prefix + "data", {})
 
     # ──────────────────────────────────────────────
-    # Entradas del Formulario
+    # Instrucciones Oficiales
     # ──────────────────────────────────────────────
 
+    st.markdown(render_info_box("""
+**ℹ️ ¿Qué información debe registrar?**  
+Por favor registre los siguientes **costos asociados a los activos físicos** del Banco de Leche Humana (BLH).  
+Si algún dato no aplica o no dispone de la información, registre **0**.
+
+**Preguntas oficiales:**  
+2️⃣8️⃣ **Valor mensual de depreciación (COP/mes)**  
+2️⃣9️⃣ **Porcentaje anual promedio de depreciación de activos (%)**  
+3️⃣0️⃣ **Presupuesto anual estimado de mantenimiento (COP/año)**  
+3️⃣1️⃣ **Costo anual estimado de impuestos asociados (COP/año)**
+    """), unsafe_allow_html=True)
+
+    st.markdown(render_compact_example_box("""
+📝 **Ejemplo práctico:**  
+
+| Concepto                                | Valor            |
+|-----------------------------------------|------------------|
+| Depreciación mensual                    | 50,000 COP       |
+| Porcentaje anual depreciación           | 20%              |
+| Mantenimiento anual                     | 300,000 COP      |
+| Impuestos anuales                       | 150,000 COP      |
+    """), unsafe_allow_html=True)
+
+    # ──────────────────────────────────────────────
+    # Pregunta 2️⃣8️⃣ Valor mensual de depreciación
+    # ──────────────────────────────────────────────
+
+    st.subheader("2️⃣8️⃣ 💸 Valor mensual estimado de depreciación (COP/mes):")
     valor_mensual = st.number_input(
-        "💸 Valor mensual de depreciación ($ COP/mes)",
+        "Valor mensual de depreciación (COP):",
         min_value=0.0, step=10000.0,
         value=safe_float(prev_data.get("valor_mensual_cop", 0.0)),
-        key=prefix + "valor_mensual"
+        help="Incluye depreciación mensual de infraestructura, equipos o vehículos del BLH."
     )
 
-    porcentaje = st.slider(
-        "📊 Porcentaje promedio anual de depreciación (%)",
+    # ──────────────────────────────────────────────
+    # Pregunta 2️⃣9️⃣ Porcentaje anual de depreciación
+    # ──────────────────────────────────────────────
+
+    st.subheader("2️⃣9️⃣ 📊 Porcentaje anual promedio de depreciación (%):")
+    porcentaje_depreciacion = st.slider(
+        "Porcentaje anual promedio de depreciación:",
         min_value=0, max_value=100, step=1,
-        value=safe_int(prev_data.get("porcentaje_depreciacion", 20)),
-        key=prefix + "porcentaje"
+        value=safe_int(prev_data.get("porcentaje_depreciacion", 0)),
+        help="Ejemplo: 20%. Si no aplica, registre 0."
     )
 
+    # ──────────────────────────────────────────────
+    # Pregunta 3️⃣0️⃣ Presupuesto anual mantenimiento
+    # ──────────────────────────────────────────────
+
+    st.subheader("3️⃣0️⃣ 🔧 Presupuesto anual estimado de mantenimiento (COP):")
     mantenimiento_anual = st.number_input(
-        "🔧 Presupuesto anual estimado de mantenimiento ($ COP/año)",
+        "Presupuesto anual de mantenimiento (COP):",
         min_value=0.0, step=10000.0,
         value=safe_float(prev_data.get("mantenimiento_anual_cop", 0.0)),
-        key=prefix + "mantenimiento"
+        help="Incluye mantenimiento preventivo y correctivo de equipos o infraestructura del BLH."
     )
 
     # ──────────────────────────────────────────────
-    # Validación de Completitud
+    # Pregunta 3️⃣1️⃣ Costo anual de impuestos
     # ──────────────────────────────────────────────
 
-    is_complete = any([
-        valor_mensual > 0,
-        porcentaje > 0,
-        mantenimiento_anual > 0
-    ])
+    st.subheader("3️⃣1️⃣ 🏛️ Costo anual estimado de impuestos asociados (COP):")
+    impuestos_anuales = st.number_input(
+        "Costo anual estimado de impuestos (COP):",
+        min_value=0.0, step=10000.0,
+        value=safe_float(prev_data.get("impuestos_anuales_cop", 0.0)),
+        help="Incluye impuestos prediales, vehículos o similares. Use 0 si no aplica."
+    )
+
+    # ──────────────────────────────────────────────
+    # Validación y Compleción
+    # ──────────────────────────────────────────────
+
+    is_complete = True  # Sección siempre marcada como completada
 
     st.session_state[completion_flag] = is_complete
 
     # ──────────────────────────────────────────────
-    # Guardado y Control de Progreso
+    # Guardado y Navegación
     # ──────────────────────────────────────────────
 
     if st.button("💾 Guardar sección - Depreciación e Impuestos"):
         st.session_state[prefix + "data"] = {
             "valor_mensual_cop": valor_mensual,
-            "porcentaje_depreciacion": porcentaje,
-            "mantenimiento_anual_cop": mantenimiento_anual
+            "porcentaje_depreciacion": porcentaje_depreciacion,
+            "mantenimiento_anual_cop": mantenimiento_anual,
+            "impuestos_anuales_cop": impuestos_anuales
         }
-
-        st.session_state[completion_flag] = is_complete
 
         flat_data = flatten_session_state(st.session_state)
         success = append_or_update_row(flat_data)
 
         if success:
-            st.success("✅ Datos de depreciación y mantenimiento guardados exitosamente.")
-            st.balloons()
-            st.markdown("🎯 ¡Felicitaciones! Ha completado todas las secciones del formulario.")
-            if "section_index" in st.session_state:
-                st.session_state.section_index = 9
+            st.success("✅ Datos guardados correctamente.")
+            if "section_index" in st.session_state and st.session_state.section_index < 9:
+                st.session_state.section_index += 1
                 st.session_state.navigation_triggered = True
                 st.rerun()
         else:
             st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
-
-    # ──────────────────────────────────────────────
-    # Resumen de Datos Guardados
-    # ──────────────────────────────────────────────
-
-    # with st.expander("🔍 Ver resumen de datos guardados"):
-    #     st.write({
-    #         "Valor mensual depreciación (COP)": valor_mensual,
-    #         "Porcentaje anual de depreciación (%)": porcentaje,
-    #         "Presupuesto anual mantenimiento (COP)": mantenimiento_anual
-    #     })

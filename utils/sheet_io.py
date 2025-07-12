@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
 from utils.google_sheets_client import get_worksheet, get_google_sheet_df
-
 from config import MASTER_CSV  # ✅ Para guardar backup local
-
 
 # ──────────────────────────────────────────────
 # 1️⃣ Cargar datos existentes por IPS
@@ -55,29 +53,24 @@ def append_or_update_row(flat_data: dict, sheet_name="Sheet1"):
             st.error("❌ El campo `identificacion__ips_id` es obligatorio para guardar.")
             return False
 
-        # Obtener encabezados y registros actuales
         headers = sheet.row_values(1)
         existing_rows = sheet.get_all_records()
 
-        # Verificar encabezados adicionales y actualizar si es necesario
         missing_headers = [key for key in flat_data.keys() if key not in headers]
         if missing_headers:
             headers += missing_headers
             sheet.resize(rows=sheet.row_count, cols=len(headers))
             sheet.update("A1", [headers])
 
-        # Preparar la fila completa respetando los encabezados
         full_row = [flat_data.get(col, "") for col in headers]
 
-        # Buscar fila existente por IPS y actualizar si aplica
         for idx, row in enumerate(existing_rows):
             existing_id = str(row.get("identificacion__ips_id", "")).strip().lower()
             if existing_id == ips_id:
-                sheet.update(f"A{idx + 2}", [full_row])  # idx + 2 → compensar encabezado
+                sheet.update(f"A{idx + 2}", [full_row])
                 _save_local_backup(flat_data, headers)
                 return True
 
-        # Si no existe, agregar nueva fila
         sheet.append_row(full_row, value_input_option="USER_ENTERED")
         _save_local_backup(flat_data, headers)
         return True
@@ -101,15 +94,16 @@ def _save_local_backup(flat_data, headers):
         headers (list): Lista completa de encabezados.
     """
     try:
-        # Leer o crear DataFrame
         try:
             existing_df = pd.read_csv(MASTER_CSV)
         except FileNotFoundError:
             existing_df = pd.DataFrame(columns=headers)
 
-        # Verificar si el IPS ya existe localmente
         ips_id = flat_data.get("identificacion__ips_id", "").strip().lower()
         if ips_id:
+            if "identificacion__ips_id" not in existing_df.columns:
+                existing_df["identificacion__ips_id"] = ""
+
             existing_df["identificacion__ips_id"] = existing_df["identificacion__ips_id"].fillna("").astype(str).str.lower()
             match_idx = existing_df[existing_df["identificacion__ips_id"] == ips_id].index
 
@@ -120,7 +114,9 @@ def _save_local_backup(flat_data, headers):
             else:
                 existing_df = pd.concat([existing_df, pd.DataFrame([new_row])], ignore_index=True)
 
+            existing_df = existing_df[headers]  # Garantizar orden de columnas
             existing_df.to_csv(MASTER_CSV, index=False)
+
     except Exception as e:
         st.warning("⚠️ Error al guardar la copia local en CSV.")
         st.exception(e)

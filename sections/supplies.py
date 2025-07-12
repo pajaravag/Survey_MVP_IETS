@@ -1,9 +1,10 @@
 import streamlit as st
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
-from utils.ui_styles import render_info_box, render_data_protection_box, render_compact_example_box
+from utils.ui_styles import render_info_box
 
-# 🔐 Safe conversion helper
+# 🔐 Conversión segura
+
 def safe_float(value, default=0.0):
     try:
         return float(value)
@@ -12,106 +13,78 @@ def safe_float(value, default=0.0):
 
 
 def render():
-    st.header("5. 🧴 Insumos Mensuales del Banco de Leche Humana (BLH)")
+    st.header("5. 💊 Insumos Mensuales del Banco de Leche Humana (Pregunta 21)")
 
     # ──────────────────────────────────────────────
-    # Instrucciones Visuales
+    # Instrucciones Oficiales
     # ──────────────────────────────────────────────
 
     st.markdown(render_info_box("""
-**¿Qué información debe registrar?**  
-Registre los **insumos mensuales** necesarios para el funcionamiento de su Banco de Leche Humana (BLH).  
-Para cada insumo debe diligenciar:
-- La **unidad de medida** (ej.: frascos, litros, cajas, paquetes)
-- La **cantidad promedio mensual utilizada**
-- El **costo promedio por unidad** (en pesos COP)
+**ℹ️ ¿Qué información debe registrar?**  
+Registre los **insumos mensuales** utilizados para el funcionamiento del Banco de Leche Humana (BLH). Para cada insumo debe indicar:
+
+- **Unidad de medida** (ej.: unidad, litro, metro, paquete)  
+- **Cantidad promedio mensual**  
+- **Costo promedio por unidad (COP)**  
+
+Si un insumo no aplica en su BLH, registre **0**.  
+Si requiere registrar insumos adicionales, utilice la categoría **“Otros”**.
     """), unsafe_allow_html=True)
 
-    st.markdown(render_compact_example_box("""
-📝 **Ejemplo práctico:**  
-- Insumo: *Frascos estériles*  
-- Unidad: *frascos*  
-- Cantidad promedio: *50*  
-- Costo promedio por unidad: *1,500 COP*
-    """), unsafe_allow_html=True)
-
-    st.markdown(render_data_protection_box("""
-🔐 **Nota legal:**  
-La información será utilizada exclusivamente para el análisis de costos operativos de manera agregada y confidencial, conforme a la **Ley 1581 de 2012 (Habeas Data)**.
-    """), unsafe_allow_html=True)
+    # Ejemplo renderizado con st.table
+    ejemplo_data = {
+        "Proceso": ["Captación", "Recolección", "Control microbiológico"],
+        "Insumo": ["Gorros", "Jabón quirúrgico", "Alcohol 96°"],
+        "Unidad": ["Unidad", "Litro", "Litro"],
+        "Cantidad mensual": ["1,000", "10", "5"],
+        "Costo promedio (COP)": ["550", "6,780", "15,000"]
+    }
+    st.table(ejemplo_data)
 
     # ──────────────────────────────────────────────
-    # Prefijos y Estado de Datos
+    # Prefijos y Estado
     # ──────────────────────────────────────────────
 
-    prefix = "insumos_mensuales__"
+    prefix = "insumos_detalle__"
     completion_flag = prefix + "completed"
-    insumos_key = prefix + "data"
-
-    insumos_data = st.session_state.get(insumos_key, {})
+    insumos_data = st.session_state.get(prefix + "data", {})
 
     # ──────────────────────────────────────────────
-    # Definición de Categorías e Insumos
+    # Definición de Procesos e Insumos
     # ──────────────────────────────────────────────
 
-    categorias = {
-        "Insumos para almacenar": ["Frascos estériles"],
-        "Reactivos de laboratorio": [
-            "Caldo bilis-verde brillante al 2%",
-            "Tubos microhematocritos fco x 100",
-            "Alcohol al 95%"
-        ],
-        "Elementos de protección personal": [
-            "Bata desechable", "Guantes", "Tapabocas",
-            "Polainas desechables", "Kit desechable paquete", "Gorro desechable"
-        ],
-        "Etiquetas y sistemas de trazabilidad": ["Etiquetas"],
-        "Productos de limpieza/desinfección": [
-            "Desinfectante", "Jabón quirúrgico", "Alcohol 70%",
-            "Antibacterial", "Toalla de papel"
-        ],
-        "Materiales de laboratorio": ["Examen de laboratorio"],
-        "Otros": ["Otro 1", "Otro 2", "Otro 3"]
+    procesos_insumos = {
+        "Captación, selección y acompañamiento de usuarias": ["Gorros", "Tapabocas", "Bata desechable", "Guantes", "Polainas desechables", "Frascos de vidrio"],
+        "Extracción y conservación": ["Frascos de vidrio tapa rosca (230 ml)", "Tapas plásticas (230 ml)", "Rótulos", "Jabón quirúrgico", "Alcohol al 70°", "Antibacterial", "Toallas de papel"],
+        "Recepción y almacenamiento": ["Gel refrigerante", "Paños humedecidos con alcohol 70%"],
+        "Selección y clasificación": ["Agua desionizada", "Fenolftaleína 1%", "Tubos capilares"],
+        "Pasteurización": ["Agua desionizada", "Hidróxido de sodio (Dornic)"],
+        "Control microbiológico": ["Caldo bilis-verde brillante", "Alcohol al 96°", "Desinfectante", "Tubos de ensayo", "Medio cultivo (agar sangre)"],
+        "Reenvasado": ["Rótulos"],
+        "Otros": ["Otro 1", "Otro 2"]
     }
 
     # ──────────────────────────────────────────────
-    # Formulario Dinámico por Categoría
+    # Formulario Dinámico por Proceso
     # ──────────────────────────────────────────────
 
-    for categoria, insumos in categorias.items():
-        with st.expander(f"🔹 {categoria}"):
-            cat_data = insumos_data.get(categoria, {})
+    for proceso, insumos in procesos_insumos.items():
+        with st.expander(f"🔹 {proceso}"):
+            proceso_data = insumos_data.get(proceso, {})
 
             for insumo in insumos:
-                item_data = cat_data.get(insumo, {})
+                item = proceso_data.get(insumo, {})
 
-                st.markdown(f"**{insumo}**")
+                st.markdown(f"**🧙‍♂️ {insumo}**")
 
-                unidad = st.text_input(
-                    f"Unidad de medida para {insumo}",
-                    value=item_data.get("unidad", ""),
-                    key=f"{categoria}_{insumo}_unidad",
-                    help="Ej.: frascos, litros, cajas"
-                )
+                unidad = st.text_input(f"Unidad de medida:", value=item.get("unidad", ""), key=f"{proceso}_{insumo}_unidad")
+                cantidad = st.number_input(f"Cantidad promedio mensual:", min_value=0.0, value=safe_float(item.get("cantidad", 0.0)), step=1.0, key=f"{proceso}_{insumo}_cantidad")
+                costo = st.number_input(f"Costo promedio por unidad (COP):", min_value=0.0, value=safe_float(item.get("costo", 0.0)), step=100.0, key=f"{proceso}_{insumo}_costo")
 
-                cantidad = st.number_input(
-                    f"Cantidad mensual de {insumo}",
-                    min_value=0.0, step=1.0,
-                    value=safe_float(item_data.get("cantidad", 0.0)),
-                    key=f"{categoria}_{insumo}_cantidad"
-                )
+                if proceso not in insumos_data:
+                    insumos_data[proceso] = {}
 
-                costo = st.number_input(
-                    f"Costo promedio por unidad de {insumo} ($ COP)",
-                    min_value=0.0, step=100.0,
-                    value=safe_float(item_data.get("costo", 0.0)),
-                    key=f"{categoria}_{insumo}_costo"
-                )
-
-                if categoria not in insumos_data:
-                    insumos_data[categoria] = {}
-
-                insumos_data[categoria][insumo] = {
+                insumos_data[proceso][insumo] = {
                     "unidad": unidad.strip(),
                     "cantidad": cantidad,
                     "costo": costo
@@ -121,21 +94,20 @@ La información será utilizada exclusivamente para el análisis de costos opera
     # Validación de Completitud
     # ──────────────────────────────────────────────
 
-    def has_valid_data(data):
+    def has_data(data):
         return any(
-            any(item.get("cantidad", 0) > 0 or item.get("costo", 0) > 0 for item in cat.values())
-            for cat in data.values()
+            any(v.get("cantidad", 0) > 0 or v.get("costo", 0) > 0 for v in insumos.values())
+            for insumos in data.values()
         )
 
-    st.session_state[completion_flag] = has_valid_data(insumos_data)
+    st.session_state[completion_flag] = has_data(insumos_data)
 
     # ──────────────────────────────────────────────
-    # Botón de Guardado
+    # Guardado
     # ──────────────────────────────────────────────
 
-    if st.button("💾 Guardar sección - Insumos Mensuales"):
-        st.session_state[insumos_key] = insumos_data
-        st.session_state[completion_flag] = has_valid_data(insumos_data)
+    if st.button("📂 Guardar sección - Insumos Mensuales"):
+        st.session_state[prefix + "data"] = insumos_data
 
         flat_data = flatten_session_state(st.session_state)
         success = append_or_update_row(flat_data)
@@ -148,10 +120,3 @@ La información será utilizada exclusivamente para el análisis de costos opera
                 st.rerun()
         else:
             st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
-
-    # ──────────────────────────────────────────────
-    # Resumen de Datos Guardados
-    # ──────────────────────────────────────────────
-
-    # with st.expander("🔍 Ver resumen de datos guardados en esta sección"):
-    #     st.write(insumos_data)

@@ -1,9 +1,9 @@
 import streamlit as st
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
-from utils.ui_styles import render_info_box, render_data_protection_box, render_compact_example_box
+from utils.ui_styles import render_info_box, render_compact_example_box
 
-# 🔐 Safe conversion helpers
+# 🔐 Conversión segura
 def safe_int(value, default=0):
     try:
         return int(float(value))
@@ -19,179 +19,133 @@ def safe_float(value, default=0.0):
 
 
 def render():
-    st.header("8. 🚚 Transporte y Recolección de Leche Humana")
+    st.header("8. 🚚 Transporte y Recolección de Leche Humana (Preguntas 24 a 27)")
+
+    prefix = "transporte__"
+    completion_flag = prefix + "completed"
+
+    modalidades_prev = st.session_state.get(prefix + "modalidades", {})
+    equipos_prev = st.session_state.get(prefix + "equipos_especiales", "No")
+    zonas_prev = st.session_state.get(prefix + "zonas", {})
+    vehiculos_prev = st.session_state.get(prefix + "vehiculos", [])
 
     # ──────────────────────────────────────────────
-    # Instrucciones Visuales con ejemplos
+    # Pregunta 2️⃣4️⃣ Modalidades de Recolección
     # ──────────────────────────────────────────────
+
+    st.subheader("2️⃣4️⃣ Modalidades de recolección de leche humana")
 
     st.markdown(render_info_box("""
-**¿Qué información debe registrar?**  
-Por favor registre los detalles sobre la **recolección y transporte de la leche humana** en su Banco de Leche Humana (BLH).  
-Incluya información sobre:
-- **Modalidades de recolección** empleadas.
-- **Equipos de transporte** utilizados.
-- **Costos mensuales y distancias** según zona de recolección.
+**¿Dónde recibe su BLH las donaciones de leche humana?**  
+Marque todas las opciones que apliquen.
     """), unsafe_allow_html=True)
-
-    st.markdown(render_compact_example_box("""
-📝 **Ejemplo práctico:**  
-- Modalidades: Recolección en domicilio de donantes.  
-- Equipos: 2 termos rígidos — Costo por unidad: 150,000 COP.  
-- Zona rural: 120 km mensuales — Costo: 300,000 COP.
-    """), unsafe_allow_html=True)
-
-    st.markdown(render_data_protection_box("""
-🔐 **Nota legal:**  
-La información se utilizará exclusivamente para los fines del estudio, en cumplimiento de la **Ley 1581 de 2012 (Habeas Data)**.
-    """), unsafe_allow_html=True)
-
-    # ──────────────────────────────────────────────
-    # Variables de Estado
-    # ──────────────────────────────────────────────
-
-    prefix_modal = "transporte_modalidades__"
-    prefix_equipos = "transporte_equipos__"
-    prefix_detalle_zonas = "transporte_detalle_zonas__"
-    completion_flag = prefix_modal + "completed"
-
-    modalidades_prev = st.session_state.get(prefix_modal + "data", {})
-    equipos_prev = st.session_state.get(prefix_equipos + "data", {})
-    detalle_prev = st.session_state.get(prefix_detalle_zonas + "data", {})
-
-    # ──────────────────────────────────────────────
-    # Modalidades de Recolección
-    # ──────────────────────────────────────────────
-
-    st.subheader("📍 Modalidades de recepción de leche")
 
     modalidades = {
-        "En la institución donde se encuentra el BLH": st.checkbox(
-            "Recepción en la institución", value=modalidades_prev.get("En la institución donde se encuentra el BLH", False)
-        ),
-        "En las casas de las donantes": st.checkbox(
-            "Recolectada en domicilio", value=modalidades_prev.get("En las casas de las donantes", False)
-        ),
-        "En centros de recolección": st.checkbox(
-            "Centros de recolección", value=modalidades_prev.get("En centros de recolección", False)
-        )
+        "Institución donde se encuentra el BLH": st.radio("Recepción en institución", ["Sí", "No"], index=0 if modalidades_prev.get("Institución donde se encuentra el BLH", "No") == "Sí" else 1, horizontal=True),
+        "En las casas de los donantes": st.radio("Recolectada en domicilio", ["Sí", "No"], index=0 if modalidades_prev.get("En las casas de los donantes", "No") == "Sí" else 1, horizontal=True),
+        "Centros de recolección": st.radio("Centros de recolección", ["Sí", "No"], index=0 if modalidades_prev.get("Centros de recolección", "No") == "Sí" else 1, horizontal=True),
     }
 
     # ──────────────────────────────────────────────
-    # Equipos de Transporte
+    # Pregunta 2️⃣5️⃣ Compra de Equipos Especiales
     # ──────────────────────────────────────────────
 
-    st.subheader("🚚 Equipos de transporte utilizados")
+    st.subheader("2️⃣5️⃣ Equipos especializados para el transporte")
 
-    usa_equipos = st.radio(
-        "¿Utiliza equipos especializados para el transporte de la leche?",
+    st.markdown(render_info_box("""
+**¿La institución ha adquirido equipos especializados (termos, cajas isotérmicas, etc.) para el transporte de leche humana?**
+    """), unsafe_allow_html=True)
+
+    equipos_especiales = st.radio(
+        "¿Ha sido necesaria la compra de equipos especializados para el transporte?",
         ["Sí", "No"],
-        index=0 if equipos_prev else 1,
+        index=0 if equipos_prev == "Sí" else 1,
         horizontal=True
     )
 
-    equipos_data = {}
-    if usa_equipos == "Sí":
-        equipos = [
-            "Termos rígidos",
-            "Cajas térmicas de poliestireno",
-            "Neveras portátiles con acumuladores de frío"
-        ]
-        for eq in equipos:
-            eq_data = equipos_prev.get(eq, {})
-
-            st.markdown(f"**{eq}**")
-
-            cantidad = st.number_input(
-                f"Cantidad disponible de {eq}",
-                min_value=0, step=1,
-                value=safe_int(eq_data.get("cantidad", 0)),
-                key=f"{eq}_cantidad"
-            )
-
-            capacidad = st.number_input(
-                f"Capacidad promedio por unidad (litros)",
-                min_value=0.0, step=0.5,
-                value=safe_float(eq_data.get("capacidad_litros", 0.0)),
-                key=f"{eq}_capacidad"
-            )
-
-            costo = st.number_input(
-                f"Costo promedio por unidad ($ COP)",
-                min_value=0.0, step=1000.0,
-                value=safe_float(eq_data.get("costo_unitario", 0.0)),
-                key=f"{eq}_costo"
-            )
-
-            equipos_data[eq] = {
-                "cantidad": cantidad,
-                "capacidad_litros": capacidad,
-                "costo_unitario": costo
-            }
-
     # ──────────────────────────────────────────────
-    # Detalle por Zona
+    # Pregunta 2️⃣6️⃣ Detalle por Zona
     # ──────────────────────────────────────────────
 
-    st.subheader("📊 Detalle por zona de recolección")
+    st.subheader("2️⃣6️⃣ Detalle operativo por zona de recolección")
 
-    zonas = [
-        "Donación en zona urbana",
-        "Donación en zona rural",
-        "Donación en zonas rurales alejadas"
-    ]
+    zonas_example = {
+        "Zona": ["Zona urbana", "Zona rural", "Zonas rurales alejadas"],
+        "Volumen (ml)": [3567, 14565, 34556],
+        "Kilometraje (km)": [5, 20, 40],
+        "Costo mensual (COP)": [200000, 350000, 450000]
+    }
 
-    detalle_zonas = {}
+    st.markdown(render_compact_example_box("📝 **Ejemplo:**"), unsafe_allow_html=True)
+    st.table(zonas_example)
+
+    zonas = ["Zona urbana", "Zona rural", "Zonas rurales alejadas"]
+    zonas_data = {}
+
     for zona in zonas:
-        prev = detalle_prev.get(zona, {})
-
+        prev = zonas_prev.get(zona, {})
         st.markdown(f"**{zona}**")
-
-        volumen_ml = st.number_input(
-            f"Volumen mensual recolectado ({zona}) (mL)",
-            min_value=0.0, step=100.0,
-            value=safe_float(prev.get("volumen_ml", 0.0)),
-            key=f"{zona}_volumen"
-        )
-
-        kilometros = st.number_input(
-            f"Kilometraje mensual en {zona} (km)",
-            min_value=0.0, step=1.0,
-            value=safe_float(prev.get("km", 0.0)),
-            key=f"{zona}_km"
-        )
-
-        costo_zona = st.number_input(
-            f"Costo promedio mensual en {zona} ($ COP)",
-            min_value=0.0, step=1000.0,
-            value=safe_float(prev.get("costo", 0.0)),
-            key=f"{zona}_costo"
-        )
-
-        detalle_zonas[zona] = {
-            "volumen_ml": volumen_ml,
+        volumen = st.number_input(f"Volumen mensual recolectado (ml) - {zona}:", min_value=0.0, step=100.0, value=safe_float(prev.get("volumen_ml", 0.0)), key=f"{zona}_volumen")
+        kilometros = st.number_input(f"Kilometraje mensual (km) - {zona}:", min_value=0.0, step=1.0, value=safe_float(prev.get("km", 0.0)), key=f"{zona}_km")
+        costo = st.number_input(f"Costo mensual estimado (COP) - {zona}:", min_value=0.0, step=1000.0, value=safe_float(prev.get("costo", 0.0)), key=f"{zona}_costo")
+        zonas_data[zona] = {
+            "volumen_ml": volumen,
             "km": kilometros,
-            "costo": costo_zona
+            "costo": costo
         }
 
     # ──────────────────────────────────────────────
-    # Completitud y Estado
+    # Pregunta 2️⃣7️⃣ Vehículos utilizados
     # ──────────────────────────────────────────────
 
-    modalities_filled = any(modalidades.values())
-    details_filled = any(v.get("volumen_ml", 0) > 0 or v.get("km", 0) > 0 or v.get("costo", 0) > 0 for v in detalle_zonas.values())
-    equipment_filled = any(eq.get("cantidad", 0) > 0 for eq in equipos_data.values()) if usa_equipos == "Sí" else False
+    st.subheader("2️⃣7️⃣ Vehículos utilizados para recolección")
 
-    st.session_state[completion_flag] = modalities_filled or details_filled or equipment_filled
+    st.markdown(render_info_box("""
+**Indique los vehículos utilizados para la recolección de leche humana:**  
+Para cada vehículo indique:
+- Marca, modelo y año
+- Volumen máximo por viaje (ml)
+- Número de viajes mensuales
+- Tipo de propiedad
+    """), unsafe_allow_html=True)
+
+    num_vehiculos = st.number_input("Número de vehículos utilizados:", min_value=0, step=1, value=len(vehiculos_prev))
+
+    vehiculos_data = []
+    for i in range(num_vehiculos):
+        with st.expander(f"🚗 Vehículo #{i+1}"):
+            prev = vehiculos_prev[i] if i < len(vehiculos_prev) else {}
+            tipo = st.text_input("Tipo de vehículo:", value=prev.get("tipo", ""), key=f"vehiculo_tipo_{i}")
+            marca_modelo_anio = st.text_input("Marca, modelo y año:", value=prev.get("marca_modelo", ""), key=f"vehiculo_marca_{i}")
+            volumen_max = st.number_input("Volumen máximo por viaje (ml):", min_value=0.0, step=100.0, value=safe_float(prev.get("volumen_viaje_ml", 0.0)), key=f"vehiculo_volumen_{i}")
+            viajes_mes = st.number_input("Número de viajes al mes:", min_value=0, step=1, value=safe_int(prev.get("viajes_mes", 0)), key=f"vehiculo_viajes_{i}")
+            propiedad = st.selectbox("Tipo de propiedad:", ["Propio institucional", "Alquilado", "Prestado", "Donado"], index=0, key=f"vehiculo_propiedad_{i}")
+            vehiculos_data.append({
+                "tipo": tipo,
+                "marca_modelo": marca_modelo_anio,
+                "volumen_viaje_ml": volumen_max,
+                "viajes_mes": viajes_mes,
+                "propiedad": propiedad
+            })
 
     # ──────────────────────────────────────────────
-    # Botón de Guardado
+    # Validación y Guardado
     # ──────────────────────────────────────────────
+
+    is_complete = (
+        any(v == "Sí" for v in modalidades.values()) or
+        equipos_especiales == "Sí" or
+        any(z["volumen_ml"] > 0 or z["km"] > 0 or z["costo"] > 0 for z in zonas_data.values()) or
+        len(vehiculos_data) > 0
+    )
+
+    st.session_state[completion_flag] = is_complete
 
     if st.button("💾 Guardar sección - Transporte y Recolección"):
-        st.session_state[prefix_modal + "data"] = modalidades
-        st.session_state[prefix_equipos + "data"] = equipos_data if usa_equipos == "Sí" else {}
-        st.session_state[prefix_detalle_zonas + "data"] = detalle_zonas
+        st.session_state[prefix + "modalidades"] = modalidades
+        st.session_state[prefix + "equipos_especiales"] = equipos_especiales
+        st.session_state[prefix + "zonas"] = zonas_data
+        st.session_state[prefix + "vehiculos"] = vehiculos_data
 
         flat_data = flatten_session_state(st.session_state)
         success = append_or_update_row(flat_data)
@@ -204,16 +158,3 @@ La información se utilizará exclusivamente para los fines del estudio, en cump
                 st.rerun()
         else:
             st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
-
-    # ──────────────────────────────────────────────
-    # Resumen de Datos Guardados
-    # ──────────────────────────────────────────────
-
-    # with st.expander("🔍 Ver modalidades de recolección guardadas"):
-    #     st.write(modalidades)
-
-    # with st.expander("🔍 Ver equipos de transporte guardados"):
-    #     st.write(equipos_data if usa_equipos == "Sí" else {})
-
-    # with st.expander("🔍 Ver detalle de zonas guardado"):
-    #     st.write(detalle_zonas)

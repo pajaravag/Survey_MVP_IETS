@@ -1,163 +1,112 @@
 import streamlit as st
+import pandas as pd
 from utils.state_manager import flatten_session_state
 from utils.sheet_io import append_or_update_row
-from utils.ui_styles import render_info_box, render_data_protection_box, render_compact_example_box
-
-# 🔐 Safe conversion helpers
-def safe_int(value, default=0):
-    try:
-        return int(float(value))
-    except (ValueError, TypeError):
-        return default
-
-
-def safe_float(value, default=0.0):
-    try:
-        return float(value)
-    except (ValueError, TypeError):
-        return default
-
+from utils.ui_styles import render_info_box, render_compact_example_box
 
 def render():
-    st.header("6. 👥 Personal Asignado al Banco de Leche Humana (BLH)")
+    st.header("6. 👩‍⚕️ Personal del Banco de Leche Humana (Pregunta 22)")
+
+    prefix = "personal_blh__"
+    completion_flag = prefix + "completed"
+
+    prev_data = st.session_state.get(prefix + "data", [])
 
     # ──────────────────────────────────────────────
-    # Instrucciones Visuales
+    # Instrucciones Oficiales
     # ──────────────────────────────────────────────
 
     st.markdown(render_info_box("""
-**¿Qué información debe registrar?**  
-Registre el **personal que participa en el funcionamiento del Banco de Leche Humana (BLH)**. Para cada perfil indique:
-- El **número de personas** asignadas.
-- El **salario mensual promedio** en pesos COP.
-- En caso de personal **compartido**, el **% de horas dedicadas exclusivamente al BLH**.
-    """), unsafe_allow_html=True)
+**ℹ️ ¿Qué información debe registrar?**  
+Por favor registre para cada rol:
+- El número de personas asignadas.
+- El porcentaje promedio de dedicación al BLH.
+- La remuneración mensual promedio por persona (COP).
+
+Si un perfil no aplica, registre **0** en todos los campos.
+"""), unsafe_allow_html=True)
 
     st.markdown(render_compact_example_box("""
 📝 **Ejemplo práctico:**  
-- Perfil: *Nutricionista*  
-- Exclusivo: 1 persona — Salario: 2,500,000 COP  
-- Compartido: 1 persona — 40% de dedicación — Salario: 2,800,000 COP
-    """), unsafe_allow_html=True)
 
-    st.markdown(render_data_protection_box("""
-🔐 **Nota legal:**  
-Los datos se recopilan para fines de análisis económico y son tratados conforme a la **Ley 1581 de 2012 (Habeas Data)**, garantizando la confidencialidad institucional.
+| Personal (rol)              | Personas | % Dedicación | Salario mensual (COP) |
+|----------------------------|----------|--------------|-----------------------|
+| Auxiliar de enfermería      | 4        | 100%         | 3,500,000             |
+| Profesional en Enfermería   | 2        | 80%          | 5,500,000             |
+| Médico Pediatra             | 1        | 60%          | 9,500,000             |
+| Otros (Nutricionista, etc.) | 1        | 50%          | 5,800,000             |
     """), unsafe_allow_html=True)
 
     # ──────────────────────────────────────────────
-    # Roles Definidos
+    # Definición de perfiles y carga de datos previos
     # ──────────────────────────────────────────────
 
-    roles = [
+    perfiles = [
         "Auxiliar de enfermería",
         "Profesional en Enfermería",
         "Técnico de laboratorio",
         "Profesional en Medicina",
-        "Médico pediatra",
+        "Médico Pediatra",
         "Nutricionista",
         "Bacteriólogo",
         "Personal de transporte y distribución",
-        "Otro"
+        "Otros 1",
+        "Otros 2",
+        "Otros 3"
     ]
 
-    prefix_excl = "personal_exclusivo__"
-    prefix_comp = "personal_compartido__"
-    completion_flag = "personal_asignado__completed"
+    default_data = pd.DataFrame([
+        {
+            "Rol": perfil,
+            "Personas": 0,
+            "% Dedicación": 0,
+            "Salario mensual (COP)": 0.0
+        }
+        for perfil in perfiles
+    ])
 
-    exclusivo_data = st.session_state.get(prefix_excl + "data", {})
-    compartido_data = st.session_state.get(prefix_comp + "data", {})
-
-    personal_exclusivo = {}
-    personal_compartido = {}
-
-    # ──────────────────────────────────────────────
-    # Sección: Personal Exclusivo (100%)
-    # ──────────────────────────────────────────────
-
-    st.subheader("👥 Personal Exclusivo (dedicación total al BLH)")
-
-    for rol in roles:
-        rol_data = exclusivo_data.get(rol, {})
-        with st.container():
-            st.markdown(f"**{rol}**")
-
-            cantidad = st.number_input(
-                f"Número de personas ({rol})",
-                min_value=0, step=1,
-                value=safe_int(rol_data.get("cantidad", 0)),
-                key=f"excl_{rol}_n",
-                help="Ingrese 0 si no aplica este perfil en su BLH."
-            )
-
-            salario = st.number_input(
-                f"Salario mensual promedio ({rol}) ($ COP)",
-                min_value=0.0, step=10000.0,
-                value=safe_float(rol_data.get("salario_mensual", 0.0)),
-                key=f"excl_{rol}_s",
-                help="Ingrese el valor promedio mensual o 0 si no aplica."
-            )
-
-            personal_exclusivo[rol] = {
-                "cantidad": cantidad,
-                "salario_mensual": salario
-            }
+    if prev_data:
+        for i, row in enumerate(prev_data):
+            if i < len(default_data):
+                default_data.at[i, "Personas"] = row.get("personas", 0)
+                default_data.at[i, "% Dedicación"] = row.get("dedicacion_pct", 0)
+                default_data.at[i, "Salario mensual (COP)"] = row.get("salario", 0.0)
 
     # ──────────────────────────────────────────────
-    # Sección: Personal Compartido (dedicación parcial)
+    # Render Tabla Editable
     # ──────────────────────────────────────────────
 
-    st.subheader("🤝 Personal Compartido (dedicación parcial al BLH)")
-
-    for rol in roles:
-        rol_data = compartido_data.get(rol, {})
-        with st.container():
-            st.markdown(f"**{rol}**")
-
-            cantidad = st.number_input(
-                f"Número de personas ({rol})",
-                min_value=0, step=1,
-                value=safe_int(rol_data.get("cantidad", 0)),
-                key=f"comp_{rol}_n",
-                help="Ingrese 0 si no aplica este perfil en su BLH."
-            )
-
-            porcentaje_horas = st.slider(
-                f"% estimado de horas dedicadas al BLH ({rol})",
-                min_value=0, max_value=100, step=1,
-                value=safe_int(rol_data.get("porcentaje_horas", 0)),
-                key=f"comp_{rol}_pct"
-            )
-
-            salario = st.number_input(
-                f"Salario mensual promedio ({rol}) ($ COP)",
-                min_value=0.0, step=10000.0,
-                value=safe_float(rol_data.get("salario_mensual", 0.0)),
-                key=f"comp_{rol}_s"
-            )
-
-            personal_compartido[rol] = {
-                "cantidad": cantidad,
-                "porcentaje_horas": porcentaje_horas,
-                "salario_mensual": salario
-            }
+    edited_df = st.data_editor(
+        default_data,
+        key=f"{prefix}_editor",
+        column_config={
+            "Rol": st.column_config.Column("Rol", disabled=True),
+            "Personas": st.column_config.NumberColumn("Número de personas", min_value=0, step=1),
+            "% Dedicación": st.column_config.NumberColumn("% de dedicación", min_value=0, max_value=100, step=5),
+            "Salario mensual (COP)": st.column_config.NumberColumn("Salario mensual (COP)", min_value=0, step=50000)
+        },
+        hide_index=True,
+        num_rows="fixed"
+    )
 
     # ──────────────────────────────────────────────
-    # Validación y Estado
+    # Validación y Guardado
     # ──────────────────────────────────────────────
 
-    any_exclusive = any(p.get("cantidad", 0) > 0 for p in personal_exclusivo.values())
-    any_shared = any(p.get("cantidad", 0) > 0 for p in personal_compartido.values())
-    st.session_state[completion_flag] = any_exclusive or any_shared
+    staff_data = []
+    for _, row in edited_df.iterrows():
+        staff_data.append({
+            "rol": row["Rol"],
+            "personas": int(row["Personas"]),
+            "dedicacion_pct": int(row["% Dedicación"]),
+            "salario": float(row["Salario mensual (COP)"])
+        })
 
-    # ──────────────────────────────────────────────
-    # Botón de Guardado
-    # ──────────────────────────────────────────────
+    is_complete = any(item["personas"] > 0 for item in staff_data)
+    st.session_state[completion_flag] = is_complete
 
     if st.button("💾 Guardar sección - Personal BLH"):
-        st.session_state[prefix_excl + "data"] = personal_exclusivo
-        st.session_state[prefix_comp + "data"] = personal_compartido
-        st.session_state[completion_flag] = any_exclusive or any_shared
+        st.session_state[prefix + "data"] = staff_data
 
         flat_data = flatten_session_state(st.session_state)
         success = append_or_update_row(flat_data)
@@ -169,14 +118,4 @@ Los datos se recopilan para fines de análisis económico y son tratados conform
                 st.session_state.navigation_triggered = True
                 st.rerun()
         else:
-            st.error("❌ Error al guardar. Por favor intente nuevamente.")
-
-    # ──────────────────────────────────────────────
-    # Resumen Visual
-    # ──────────────────────────────────────────────
-
-    # with st.expander("🔍 Ver Personal Exclusivo guardado"):
-    #     st.write(st.session_state.get(prefix_excl + "data", {}))
-
-    # with st.expander("🔍 Ver Personal Compartido guardado"):
-    #     st.write(st.session_state.get(prefix_comp + "data", {}))
+            st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")

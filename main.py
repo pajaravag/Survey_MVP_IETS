@@ -1,60 +1,61 @@
 import streamlit as st
 
 # ──────────────────────────────────────────────
-# Import Local Modules
+# Import Local Modules (actualizados y corregidos)
 # ──────────────────────────────────────────────
 
 from sections import (
-    identification, general_info, processes, donors_recipients,
-    infrastructure, supplies, staff, utilities,
-    transport, quality, depreciation
+    identification, general_info, donors_recipients,
+    security_efficiency, costs, supplies,
+    staff, utilities, transport, depreciation
 )
 
 from utils.state_manager import compute_progress, flatten_session_state
 from utils.sheet_io import load_existing_data, append_or_update_row
 from utils.ui_styles import render_info_box
 from utils.ui_layout import render_header, render_footer
-from config import INSTRUCTIVO_URL
 
 # ──────────────────────────────────────────────
-# Page Configuration (Institutional Branding)
+# Page Configuration
 # ──────────────────────────────────────────────
 
 st.set_page_config(page_title="Encuesta BLH", layout="wide")
 render_header()
 
 # ──────────────────────────────────────────────
-# Introductory Information (Safe Markdown Box)
+# Introducción Oficial IETS
 # ──────────────────────────────────────────────
 
 intro_markdown = """
-ℹ️ **Instrucciones Generales:**  
-Complete cada sección. Puede guardar su progreso y continuar más tarde.
+**El Instituto de Evaluación Tecnológica en Salud (IETS)** adelanta esta encuesta para estimar los costos asociados al suministro de leche humana en Colombia, incluyendo infraestructura, equipos, insumos, personal y transporte.  
+Este estudio se desarrolla en el marco de la **Ley 2361 de 2024** y los **Lineamientos Técnicos de la Estrategia de Bancos de Leche Humana**.
 
-**Nota:** La información está protegida por el derecho fundamental de **Habeas Data** (Ley 1581 de 2012). Consulte el [Instructivo aquí]({}).
-""".format(INSTRUCTIVO_URL)
+Toda la información será tratada con **estricta confidencialidad** y los resultados se presentarán de forma **agregada y anonimizada**.
 
+*Agradecemos su participación, fundamental para fortalecer esta estrategia nacional de salud pública.*
+
+*Nota: La información compartida se encuentra protegida por el derecho fundamental de **Habeas Data** (Ley 1581 de 2012). Su uso debe hacerse en cumplimiento de la garantía de dicho derecho y para los fines estrictamente autorizados.*
+"""
 st.markdown(render_info_box(intro_markdown), unsafe_allow_html=True)
 
 # ──────────────────────────────────────────────
-# Section Definitions (Navigation & Rendering)
+# Definición de Secciones (Preguntas 1 a 22)
 # ──────────────────────────────────────────────
 
 section_definitions = [
-    {"label": "1. Datos Generales", "key": "datos_generales__completed", "render": general_info.render},
-    {"label": "2. Procesos Estandarizados", "key": "procesos_realizados__completed", "render": processes.render},
-    {"label": "3. Donantes y Receptores", "key": "donantes_receptores__completed", "render": donors_recipients.render},
-    {"label": "4. Infraestructura y Equipos", "key": "infraestructura_equipos__completed", "render": infrastructure.render},
-    {"label": "5. Insumos Mensuales", "key": "insumos_mensuales__completed", "render": supplies.render},
-    {"label": "6. Personal Asignado", "key": "personal_exclusivo__completed", "render": staff.render},
-    {"label": "7. Servicios Públicos", "key": "servicios_publicos__completed", "render": utilities.render},
-    {"label": "8. Transporte y Recolección", "key": "transporte_modalidades__completed", "render": transport.render},
-    {"label": "9. Eficiencia y Calidad", "key": "calidad_seguridad__completed", "render": quality.render},
-    {"label": "10. Depreciación e Impuestos", "key": "depreciacion__completed", "render": depreciation.render},
+    {"label": "1. Datos Generales del Banco de Leche Humana (Preguntas 1 a 5)", "key": "datos_generales__completed", "render": general_info.render},
+    {"label": "2. Donantes y Receptores (Preguntas 6 a 10)", "key": "donantes_receptores__completed", "render": donors_recipients.render},
+    {"label": "3. Seguridad y Eficiencia (Preguntas 11 a 15)", "key": "seguridad_eficiencia__completed", "render": security_efficiency.render},
+    {"label": "4. Costos Asociados al Proceso BLH (Preguntas 16 a 17)", "key": "costos_blh__completed", "render": costs.render},
+    {"label": "5. Insumos Mensuales (Pregunta 18)", "key": "insumos_mensuales__completed", "render": supplies.render},
+    {"label": "6. Personal del Banco de Leche Humana (Pregunta 19)", "key": "personal_blh__completed", "render": staff.render},
+    {"label": "7. Servicios Públicos (Pregunta 20)", "key": "servicios_publicos__completed", "render": utilities.render},
+    {"label": "8. Transporte y Recolección (Pregunta 21)", "key": "transporte_modalidades__completed", "render": transport.render},
+    {"label": "9. Depreciación e Impuestos (Pregunta 22)", "key": "depreciacion__completed", "render": depreciation.render},
 ]
 
 # ──────────────────────────────────────────────
-# Identification (Required Before Proceeding)
+# Render Identification
 # ──────────────────────────────────────────────
 
 identification.render()
@@ -82,7 +83,7 @@ if "section_index" not in st.session_state:
     st.session_state.section_index = 0
 
 # ──────────────────────────────────────────────
-# Sidebar Navigation Menu (Quick Access)
+# Sidebar Navigation
 # ──────────────────────────────────────────────
 
 with st.sidebar:
@@ -105,19 +106,18 @@ with st.sidebar:
 # ──────────────────────────────────────────────
 
 current_section = section_definitions[st.session_state.section_index]
-st.subheader(current_section["label"])
 current_section["render"]()
 
 # ──────────────────────────────────────────────
-# Global Progress Bar
+# Progress Bar
 # ──────────────────────────────────────────────
 
 completed_count, progress_percent = compute_progress(st.session_state, [s["key"] for s in section_definitions])
 
-st.progress(progress_percent, text=f"🔄 Progreso general: {completed_count} de {len(section_definitions)} secciones completadas")
+st.progress(progress_percent, text=f"🔄 Progreso: {completed_count} de {len(section_definitions)} secciones completadas")
 
 # ──────────────────────────────────────────────
-# Navigation Buttons (Previous / Next)
+# Navigation Buttons
 # ──────────────────────────────────────────────
 
 col1, col2, _ = st.columns([1, 1, 6])
@@ -135,17 +135,17 @@ with col2:
             st.rerun()
 
 # ──────────────────────────────────────────────
-# Final Section Message & Save
+# Final Confirmation and Save
 # ──────────────────────────────────────────────
 
 if st.session_state.section_index == len(section_definitions) - 1:
-    st.success("🎉 Ha llegado al final del formulario. Revise cualquier sección si es necesario.")
+    st.success("🎉 Ha llegado al final del formulario. Puede revisar cualquier sección si lo desea.")
     if st.button("⬅️ Volver al inicio"):
         st.session_state.section_index = 0
         st.rerun()
 
 st.markdown("---")
-st.markdown("### 📤 Guardar encuesta completa")
+st.markdown("### 📤 Exportar Encuesta Completa")
 
 if st.button("Guardar encuesta como CSV y Google Sheets"):
     flat_data = flatten_session_state(st.session_state)
@@ -153,13 +153,9 @@ if st.button("Guardar encuesta como CSV y Google Sheets"):
     ips_name = st.session_state.get("identificacion", {}).get("ips_id", "IPS desconocida")
 
     if success:
-        st.success(f"✅ Encuesta de `{ips_name}` guardada exitosamente.")
+        st.success(f"✅ Encuesta de `{ips_name}` guardada exitosamente en respaldo.")
     else:
-        st.error("❌ Error al guardar la encuesta. Por favor intente nuevamente.")
-
-# ──────────────────────────────────────────────
-# Static Footer
-# ──────────────────────────────────────────────
+        st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
 
 st.markdown("<hr>", unsafe_allow_html=True)
 render_footer()
