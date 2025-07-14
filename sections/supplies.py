@@ -11,7 +11,7 @@ def safe_float(value, default=0.0):
         return default
 
 def render():
-    st.header("8. 💊 Insumos del Banco de Leche Humana (Pregunta 21)")
+    st.header("7. 💊 Insumos del Banco de Leche Humana (Pregunta 21)")
 
     # ──────────────────────────────────────────────
     # Instrucciones Oficiales

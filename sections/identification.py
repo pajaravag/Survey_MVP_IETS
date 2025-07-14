@@ -6,7 +6,7 @@ def render():
     st.header("1. 🏥 Identificación de la IPS (Pregunta 1)")
 
     # ──────────────────────────────────────────────
-    # Instrucciones del formulario oficial
+    # Instrucciones oficiales
     # ──────────────────────────────────────────────
     st.markdown(render_info_box("""
 **ℹ️ ¿Qué información debe registrar?**  
@@ -35,11 +35,10 @@ Esta información permite rastrear el origen del formulario y facilitar el acomp
     """), unsafe_allow_html=True)
 
     # ──────────────────────────────────────────────
-    # Recuperar estado y verificar si ya está cargado
+    # Recuperar estado si aplica
     # ──────────────────────────────────────────────
     already_loaded = st.session_state.get("data_loaded", False)
     identificacion_data = st.session_state.get("identificacion", {})
-
     ips_id_in_state = identificacion_data.get("ips_id", "").strip().lower()
 
     if ips_id_in_state and not already_loaded:
@@ -57,7 +56,9 @@ Esta información permite rastrear el origen del formulario y facilitar el acomp
             st.session_state["data_loaded"] = True
             st.rerun()
 
-    # Valores por defecto si están en memoria
+    # ──────────────────────────────────────────────
+    # Valores por defecto desde el estado
+    # ──────────────────────────────────────────────
     default_values = {
         "ips_id": identificacion_data.get("ips_id", ""),
         "correo": identificacion_data.get("correo_responsable", ""),
@@ -68,11 +69,11 @@ Esta información permite rastrear el origen del formulario y facilitar el acomp
     disable_edit = already_loaded
 
     # ──────────────────────────────────────────────
-    # Formulario
+    # Formulario de entrada
     # ──────────────────────────────────────────────
     with st.form("form_identificacion", clear_on_submit=False):
         ips_id = st.text_input(
-            "🏥 Nombre completo de la institución (obligatorio)",
+            "🏥 Nombre completo de la institución",
             value=default_values["ips_id"],
             key="ips_id_input",
             disabled=disable_edit,
@@ -80,28 +81,28 @@ Esta información permite rastrear el origen del formulario y facilitar el acomp
         )
 
         correo = st.text_input(
-            "📧 Correo electrónico del responsable (obligatorio)",
+            "📧 Correo electrónico del responsable",
             value=default_values["correo"],
             key="correo_responsable_input",
             help="Correo válido para contacto."
         )
 
         nombre = st.text_input(
-            "👤 Nombre del responsable (opcional)",
+            "👤 Nombre del responsable",
             value=default_values["nombre"],
             key="nombre_responsable_input",
             help="Nombre completo del responsable del formulario, si desea registrarlo."
         )
 
         cargo = st.text_input(
-            "💼 Cargo del responsable (opcional)",
+            "💼 Cargo del responsable",
             value=default_values["cargo"],
             key="cargo_responsable_input",
             help="Ejemplo: Coordinador(a) BLH, Médico(a) Pediatra, etc."
         )
 
         telefono = st.text_input(
-            "📞 Teléfono de contacto (opcional)",
+            "📞 Teléfono de contacto",
             value=default_values["telefono"],
             key="telefono_responsable_input",
             help="Incluya un número celular o fijo que permita contacto posterior."
@@ -110,7 +111,7 @@ Esta información permite rastrear el origen del formulario y facilitar el acomp
         submitted = st.form_submit_button("💾 Guardar identificación")
 
     # ──────────────────────────────────────────────
-    # Validación y almacenamiento
+    # Validación y guardado
     # ──────────────────────────────────────────────
     if submitted:
         missing_fields = []
@@ -130,3 +131,7 @@ Esta información permite rastrear el origen del formulario y facilitar el acomp
                 "telefono_responsable": telefono.strip()
             }
             st.success("✅ Datos de identificación guardados correctamente.")
+
+            # 👉 Avanzar automáticamente a la sección 2 (Datos Generales)
+            st.session_state.section_index = 2
+            st.rerun()

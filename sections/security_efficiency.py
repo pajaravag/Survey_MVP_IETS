@@ -16,103 +16,106 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError):
         return default
 
-
 def render():
-    st.header("3. 🔐 Seguridad y Eficiencia del Banco de Leche Humana (Preguntas 12 a 16)")
+    st.header("4. 🔐 Seguridad y Eficiencia del Banco de Leche Humana (Preguntas 11 a 16)")
 
     # ──────────────────────────────────────────────
-    # Instrucciones Oficiales
+    # Introducción
     # ──────────────────────────────────────────────
-
     st.markdown(render_info_box("""
 **ℹ️ ¿Qué información debe registrar?**  
-Por favor registre información relacionada con la **seguridad y eficiencia de los procesos de su Banco de Leche Humana (BLH)**.  
-Si algún dato no aplica, registre **0** o seleccione **No aplica**.
-
-1️⃣2️⃣ **Volumen promedio de leche descartada por no cumplir estándares al mes (ml).**  
-1️⃣3️⃣ **Volumen promedio de leche descartada por vencimiento al mes (ml).**  
-1️⃣4️⃣ **Tiempo promedio desde la recolección hasta la distribución (días).**  
-1️⃣5️⃣ **¿Se realiza control microbiológico?**  
-1️⃣6️⃣ **Descripción del control microbiológico (si aplica).**
-    """), unsafe_allow_html=True)
+En esta sección se solicitará información cuantitativa relacionada con la **seguridad y eficiencia** de los procesos de recolección, almacenamiento y distribución de leche humana.  
+Si algún ítem no aplica a su institución, deberá registrar el valor **cero (0)** y continuar con el formulario.  
+Para los volúmenes con decimales, utilice una **coma** como separador decimal (por ejemplo: 250,5).
+"""), unsafe_allow_html=True)
 
     st.markdown(render_compact_example_box("""
 📝 **Ejemplo práctico:**  
 - Leche descartada por estándares: **10 ml**  
 - Leche descartada por vencimiento: **0 ml**  
-- Tiempo promedio recolección → distribución: **2 días**  
+- Tiempo promedio: **2 días**  
 - Control microbiológico: **Sí**  
-- Descripción: **Realizamos control microbiológico antes y después de pasteurización.**
-    """), unsafe_allow_html=True)
+- Descripción: *Control antes y después de la pasteurización con pruebas de cultivo.*
+"""), unsafe_allow_html=True)
 
     prefix = "seguridad_eficiencia__"
     completion_flag = prefix + "completed"
+    data = st.session_state
 
+    # ──────────────────────────────────────────────
+    # Pregunta 14 fuera del formulario
+    # ──────────────────────────────────────────────
+    st.subheader("1️⃣4️⃣ ¿Se realiza control microbiológico?")
+    control_microbiologico = st.radio(
+        "Por favor indique si su institución realiza control microbiológico:",
+        ["Sí", "No", "No aplica"],
+        index=["Sí", "No", "No aplica"].index(data.get(prefix + "control_microbiologico", "No")),
+        horizontal=True,
+        key=prefix + "control_microbiologico_radio"
+    )
+    st.session_state[prefix + "control_microbiologico"] = control_microbiologico
+
+    # ──────────────────────────────────────────────
+    # Formulario
+    # ──────────────────────────────────────────────
     with st.form("seguridad_eficiencia_form"):
-
-        # Pregunta 12
-        st.subheader("1️⃣2️⃣ Volumen promedio de leche descartada por no cumplir estándares (ml):")
-        volumen_descartada_estandares = st.number_input(
-            "Volumen mensual de leche descartada por no cumplir estándares (ml):",
-            min_value=0.0, step=1.0,
-            value=safe_float(st.session_state.get(prefix + "descartada_estandares", 0.0)),
+        # Pregunta 11
+        volumen_estandares = st.number_input(
+            "1️⃣1️⃣ Volumen promedio de leche descartada por no cumplir estándares (ml):",
+            min_value=0.0,
+            step=1.0,
+            value=safe_float(data.get(prefix + "volumen_estandares", 0.0)),
             help="Si no se descarta leche, registre 0."
         )
 
-        # Pregunta 13
-        st.subheader("1️⃣3️⃣ Volumen promedio de leche descartada por vencimiento (ml):")
-        volumen_descartada_vencimiento = st.number_input(
-            "Volumen mensual de leche descartada por vencimiento (ml):",
-            min_value=0.0, step=1.0,
-            value=safe_float(st.session_state.get(prefix + "descartada_vencimiento", 0.0)),
+        # Pregunta 12
+        volumen_vencimiento = st.number_input(
+            "1️⃣2️⃣ Volumen promedio de leche descartada por vencimiento (ml):",
+            min_value=0.0,
+            step=1.0,
+            value=safe_float(data.get(prefix + "volumen_vencimiento", 0.0)),
             help="Si no se descarta leche por vencimiento, registre 0."
         )
 
-        # Pregunta 14
-        st.subheader("1️⃣4️⃣ Tiempo promedio entre recolección y distribución (días):")
-        tiempo_promedio_distribucion = st.number_input(
-            "Tiempo promedio desde recolección hasta distribución (en días):",
-            min_value=1, step=1,
-            value=safe_int(st.session_state.get(prefix + "tiempo_distribucion_dias", 1)),
-            help="Si el tiempo es menor a un día, registre 1."
+        # Pregunta 13
+        tiempo_distribucion = st.number_input(
+            "1️⃣3️⃣ Tiempo promedio desde la recolección hasta la distribución (días):",
+            min_value=1,
+            step=1,
+            value=safe_int(data.get(prefix + "tiempo_distribucion", 1)),
+            help="Si es menor a un día, registre 1."
         )
 
-        # Pregunta 15
-        st.subheader("1️⃣5️⃣ ¿Se realiza control microbiológico?")
-        control_microbiologico = st.radio(
-            "¿En su BLH se realiza control microbiológico?",
-            ["Sí", "No", "No aplica"],
-            index=["Sí", "No", "No aplica"].index(st.session_state.get(prefix + "control_microbiologico", "No")),
-            help="Seleccione la opción correspondiente."
-        )
-
-        # Pregunta 16 (Condicional)
+        # Pregunta 15 (Condicional)
         descripcion_control = ""
         if control_microbiologico == "Sí":
-            st.subheader("1️⃣6️⃣ Describa el proceso de control microbiológico:")
+            st.subheader("1️⃣5️⃣ Describa el proceso de control microbiológico:")
             descripcion_control = st.text_area(
-                "Por favor describa el proceso de control microbiológico en su institución:",
-                value=st.session_state.get(prefix + "descripcion_control", ""),
-                placeholder="Ejemplo: Se realiza control microbiológico antes y después de la pasteurización para asegurar calidad."
+                "Por favor describa el proceso: técnicas, frecuencia, tipos de análisis, estándares, etc.",
+                value=data.get(prefix + "descripcion_control", ""),
+                key=prefix + "descripcion_control_textarea"
             )
+        else:
+            descripcion_control = "NA"
 
         submitted = st.form_submit_button("💾 Guardar sección - Seguridad y Eficiencia")
 
+    # ──────────────────────────────────────────────
+    # Procesamiento
+    # ──────────────────────────────────────────────
     if submitted:
-        st.session_state[prefix + "descartada_estandares"] = volumen_descartada_estandares
-        st.session_state[prefix + "descartada_vencimiento"] = volumen_descartada_vencimiento
-        st.session_state[prefix + "tiempo_distribucion_dias"] = tiempo_promedio_distribucion
-        st.session_state[prefix + "control_microbiologico"] = control_microbiologico
-        st.session_state[prefix + "descripcion_control"] = descripcion_control.strip() if control_microbiologico == "Sí" else "NA"
-
+        st.session_state[prefix + "volumen_estandares"] = volumen_estandares
+        st.session_state[prefix + "volumen_vencimiento"] = volumen_vencimiento
+        st.session_state[prefix + "tiempo_distribucion"] = tiempo_distribucion
+        st.session_state[prefix + "descripcion_control"] = descripcion_control
         st.session_state[completion_flag] = True
 
         flat_data = flatten_session_state(st.session_state)
         success = append_or_update_row(flat_data)
 
         if success:
-            st.success("✅ Datos de seguridad y eficiencia guardados correctamente.")
-            if "section_index" in st.session_state and st.session_state.section_index < 9:
+            st.success("✅ Sección de Seguridad y Eficiencia guardada correctamente.")
+            if "section_index" in st.session_state and st.session_state.section_index < 10:
                 st.session_state.section_index += 1
                 st.session_state.navigation_triggered = True
                 st.rerun()

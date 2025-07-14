@@ -19,7 +19,7 @@ def safe_float(value, default=0.0):
 
 
 def render():
-    st.header("8. 🚚 Transporte y Recolección de Leche Humana (Preguntas 24 a 27)")
+    st.header("10. 🚚 Transporte y Recolección de Leche Humana (Preguntas 24 a 27)")
 
     prefix = "transporte__"
     completion_flag = prefix + "completed"

@@ -5,40 +5,38 @@ from utils.ui_styles import render_info_box, render_data_protection_box, render_
 
 
 def render():
-    st.header("1. 📋 Datos Generales del Banco de Leche Humana (Preguntas 1 a 5)")
+    st.header("2. 📋 Datos Generales del Banco de Leche Humana (Preguntas 1 a 4)")
 
     # ──────────────────────────────────────────────
-    # Instrucciones Visuales
+    # Instrucciones de contexto técnico
     # ──────────────────────────────────────────────
     st.markdown(render_info_box("""
-**ℹ️ ¿Por qué es importante esta sección?**  
-Esta sección permite identificar su institución y comprender las características clave de su Banco de Leche Humana (BLH).  
-La información es esencial para el análisis comparativo y la toma de decisiones.
-
-Por favor diligencie todos los campos de forma **completa y precisa**.
-"""), unsafe_allow_html=True)
-
-    st.markdown(render_data_protection_box("""
-🔐 **Nota legal:**  
-La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y será utilizada exclusivamente con fines de análisis autorizados por el **Instituto de Evaluación Tecnológica en Salud (IETS)**.
+**ℹ️ Objetivo de la sección**  
+Esta sección busca caracterizar su institución y registrar los procesos estandarizados implementados en su Banco de Leche Humana (BLH).  
+Por favor diligencie todos los campos de manera completa y precisa.
 """), unsafe_allow_html=True)
 
     st.markdown(render_compact_example_box("""
-📝 **Ejemplo:**  
+📝 **Ejemplo**  
 - Institución: Hospital Básico San Gabriel  
 - Tipo: Hospital público  
-- Año: 2008  
+- Año de implementación: 2008  
 - Procesos: Captación, Recepción, Pasteurización
 """), unsafe_allow_html=True)
 
+    st.markdown(render_data_protection_box("""
+🔐 **Confidencialidad de la información**  
+Los datos serán tratados bajo la Ley 1581 de 2012 de Habeas Data y utilizados exclusivamente para los fines autorizados por el IETS.
+"""), unsafe_allow_html=True)
+
     # ──────────────────────────────────────────────
-    # Prefijos y Estado
+    # Prefijos y estado de sesión
     # ──────────────────────────────────────────────
     prefix = "datos_generales__"
     completion_flag = prefix + "completed"
 
     # ──────────────────────────────────────────────
-    # Pregunta 1️⃣ Nombre de la Institución
+    # Pregunta 1️⃣ Nombre de la institución
     # ──────────────────────────────────────────────
     nombre = st.text_input(
         "1️⃣ 🏥 Nombre completo y oficial de la institución:",
@@ -47,7 +45,7 @@ La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y ser
     )
 
     # ──────────────────────────────────────────────
-    # Pregunta 2️⃣ Tipo de Institución
+    # Pregunta 2️⃣ Tipo de institución
     # ──────────────────────────────────────────────
     tipo_inst_options = ["Hospital público", "Clínica privada", "Mixta"]
     tipo_inst_selected = st.multiselect(
@@ -58,7 +56,7 @@ La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y ser
     )
 
     # ──────────────────────────────────────────────
-    # Pregunta 3️⃣ Año de Implementación
+    # Pregunta 3️⃣ Año de implementación del BLH
     # ──────────────────────────────────────────────
     anio_impl = st.text_input(
         "3️⃣ 📅 Año de implementación del BLH (formato AAAA):",
@@ -67,13 +65,9 @@ La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y ser
     )
 
     # ──────────────────────────────────────────────
-    # Pregunta 4️⃣ (Eliminada por redundancia)
+    # Pregunta 4️⃣ Procesos estandarizados implementados
     # ──────────────────────────────────────────────
-
-    # ──────────────────────────────────────────────
-    # Pregunta 5️⃣ Procesos Estandarizados
-    # ──────────────────────────────────────────────
-    st.subheader("5️⃣ 🔄 Procesos estandarizados realizados por su BLH")
+    st.subheader("4️⃣ 🔄 Procesos estandarizados realizados por su BLH")
 
     procesos_key = prefix + "procesos"
     otros_key = prefix + "otros_procesos"
@@ -108,22 +102,22 @@ La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y ser
     )
 
     # ──────────────────────────────────────────────
-    # Validación y Guardado
+    # Validación de completitud
     # ──────────────────────────────────────────────
     if st.button("💾 Guardar sección - Datos Generales"):
         errores = []
 
         if not nombre.strip():
-            errores.append("✅ Nombre del establecimiento")
+            errores.append("✅ Nombre de la institución")
         if not tipo_inst_selected:
             errores.append("✅ Tipo de institución")
         if not anio_impl.strip().isdigit() or len(anio_impl.strip()) != 4:
-            errores.append("✅ Año de implementación (4 dígitos)")
+            errores.append("✅ Año de implementación válido (formato AAAA)")
         if not seleccionados and not otros_procesos.strip():
-            errores.append("✅ Debe seleccionar al menos un proceso o escribir un proceso adicional")
+            errores.append("✅ Al menos un proceso estandarizado o proceso adicional")
 
         if errores:
-            st.warning("⚠️ Por favor corrija los siguientes campos antes de guardar:")
+            st.warning("⚠️ Por favor revise los siguientes campos:")
             for e in errores:
                 st.markdown(f"- {e}")
         else:
@@ -139,7 +133,7 @@ La información está protegida bajo la **Ley 1581 de 2012 (Habeas Data)** y ser
 
             if success:
                 st.success("✅ Datos generales guardados correctamente.")
-                if "section_index" in st.session_state and st.session_state.section_index < 9:
+                if "section_index" in st.session_state and st.session_state.section_index < 10:
                     st.session_state.section_index += 1
                     st.session_state.navigation_triggered = True
                     st.rerun()

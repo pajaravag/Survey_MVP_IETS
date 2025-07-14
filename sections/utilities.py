@@ -11,7 +11,7 @@ def safe_float(value, default=0.0):
         return default
 
 def render():
-    st.header("7. 💡 Servicios Públicos del Banco de Leche Humana (Pregunta 23)")
+    st.header("9. 💡 Servicios Públicos del Banco de Leche Humana (Pregunta 23)")
 
     prefix = "servicios_publicos__"
     completion_flag = prefix + "completed"

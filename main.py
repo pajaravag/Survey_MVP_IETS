@@ -1,133 +1,115 @@
 import streamlit as st
 
 # ──────────────────────────────────────────────
-# Import Local Modules (actualizados y corregidos)
+# Importación de módulos locales
 # ──────────────────────────────────────────────
-
 from sections import (
-    identification, general_info, donors_recipients,
-    security_efficiency, costs, supplies,
-    staff, utilities, transport, depreciation
+    intro, identification, general_info, donors_recipients,
+    security_efficiency, costs, costs_equipos, supplies, staff,
+    utilities, transport, depreciation
 )
-
 from utils.state_manager import compute_progress, flatten_session_state
 from utils.sheet_io import load_existing_data, append_or_update_row
-from utils.ui_styles import render_info_box
 from utils.ui_layout import render_header, render_footer
 
 # ──────────────────────────────────────────────
-# Page Configuration
+# Configuración de página
 # ──────────────────────────────────────────────
-
-st.set_page_config(page_title="Encuesta BLH", layout="wide")
+st.set_page_config(page_title="Encuesta BLH - IETS", layout="wide")
 render_header()
 
 # ──────────────────────────────────────────────
-# Introducción Oficial IETS
+# Definición de secciones
 # ──────────────────────────────────────────────
-
-intro_markdown = """
-**El Instituto de Evaluación Tecnológica en Salud (IETS)** adelanta esta encuesta para estimar los costos asociados al suministro de leche humana en Colombia, incluyendo infraestructura, equipos, insumos, personal y transporte.  
-Este estudio se desarrolla en el marco de la **Ley 2361 de 2024** y los **Lineamientos Técnicos de la Estrategia de Bancos de Leche Humana**.
-
-Toda la información será tratada con **estricta confidencialidad** y los resultados se presentarán de forma **agregada y anonimizada**.
-
-*Agradecemos su participación, fundamental para fortalecer esta estrategia nacional de salud pública.*
-
-*Nota: La información compartida se encuentra protegida por el derecho fundamental de **Habeas Data** (Ley 1581 de 2012). Su uso debe hacerse en cumplimiento de la garantía de dicho derecho y para los fines estrictamente autorizados.*
-"""
-st.markdown(render_info_box(intro_markdown), unsafe_allow_html=True)
-
-# ──────────────────────────────────────────────
-# Definición de Secciones (Preguntas 1 a 22)
-# ──────────────────────────────────────────────
-
 section_definitions = [
-    {"label": "1. Datos Generales del Banco de Leche Humana (Preguntas 1 a 5)", "key": "datos_generales__completed", "render": general_info.render},
-    {"label": "2. Donantes y Receptores (Preguntas 6 a 10)", "key": "donantes_receptores__completed", "render": donors_recipients.render},
-    {"label": "3. Seguridad y Eficiencia (Preguntas 11 a 15)", "key": "seguridad_eficiencia__completed", "render": security_efficiency.render},
-    {"label": "4. Costos Asociados al Proceso BLH (Preguntas 16 a 17)", "key": "costos_blh__completed", "render": costs.render},
-    {"label": "5. Insumos Mensuales (Pregunta 18)", "key": "insumos_mensuales__completed", "render": supplies.render},
-    {"label": "6. Personal del Banco de Leche Humana (Pregunta 19)", "key": "personal_blh__completed", "render": staff.render},
-    {"label": "7. Servicios Públicos (Pregunta 20)", "key": "servicios_publicos__completed", "render": utilities.render},
-    {"label": "8. Transporte y Recolección (Pregunta 21)", "key": "transporte_modalidades__completed", "render": transport.render},
-    {"label": "9. Depreciación e Impuestos (Pregunta 22)", "key": "depreciacion__completed", "render": depreciation.render},
+    {"label": "0. Introducción", "key": None, "render": intro.render},
+    {"label": "1. Identificación de la IPS", "key": None, "render": identification.render},
+    {"label": "2. Datos Generales del BLH (Preguntas 1 a 4)", "key": "datos_generales__completed", "render": general_info.render},
+    {"label": "3. Donantes y Receptores (Preguntas 5 a 9)", "key": "donantes_receptores__completed", "render": donors_recipients.render},
+    {"label": "4. Seguridad y Eficiencia (Preguntas 10 a 14)", "key": "seguridad_eficiencia__completed", "render": security_efficiency.render},
+    {"label": "5. Costos Asociados al Proceso BLH (Preguntas 15 a 16)", "key": "costos_blh__completed", "render": costs.render},
+    {"label": "6. Costos en Infraestructura y Equipos (Preguntas 17 y 18)", "key": "costs_equipos__completed", "render": costs_equipos.render},
+    {"label": "7. Insumos Mensuales (Pregunta 19)", "key": "insumos_mensuales__completed", "render": supplies.render},
+    {"label": "8. Personal del BLH (Pregunta 20)", "key": "personal_blh__completed", "render": staff.render},
+    {"label": "9. Servicios Públicos (Pregunta 21)", "key": "servicios_publicos__completed", "render": utilities.render},
+    {"label": "10. Transporte y Recolección (Pregunta 22)", "key": "transporte_modalidades__completed", "render": transport.render},
+    {"label": "11. Depreciación e Impuestos (Pregunta 23)", "key": "depreciacion__completed", "render": depreciation.render},
 ]
 
 # ──────────────────────────────────────────────
-# Render Identification
+# Inicializar índice de navegación
 # ──────────────────────────────────────────────
-
-identification.render()
-
-if "identificacion" not in st.session_state:
-    st.warning("⚠️ Por favor complete la identificación para continuar.")
-    st.stop()
-
-ips_id = st.session_state["identificacion"].get("ips_id", "").strip().lower()
-
-if ips_id and not st.session_state.get("data_loaded", False):
-    existing_data = load_existing_data(ips_id)
-    if existing_data:
-        widget_keys_to_skip = {"ips_id_input", "correo_responsable_input", "nombre_responsable_input"}
-        safe_data = {k: v for k, v in existing_data.items() if k not in widget_keys_to_skip and not k.startswith("FormSubmitter:")}
-        st.session_state.update(safe_data)
-        st.info(f"📂 Datos previos restaurados para IPS: `{ips_id}`.")
-    else:
-        st.info("📝 No se encontraron datos previos para esta IPS.")
-
-    st.session_state["data_loaded"] = True
-    st.rerun()
-
 if "section_index" not in st.session_state:
     st.session_state.section_index = 0
 
+current_section = section_definitions[st.session_state.section_index]
+
 # ──────────────────────────────────────────────
-# Sidebar Navigation
+# Validación de identificación antes de avanzar
 # ──────────────────────────────────────────────
-
-with st.sidebar:
-    st.markdown("### 📑 Navegación rápida")
-
-    labels_with_status = [
-        f"{'✅' if st.session_state.get(section['key'], False) else '🔲'} {section['label']}"
-        for section in section_definitions
-    ]
-
-    selected_label = st.selectbox("Ir a sección:", labels_with_status, index=st.session_state.section_index)
-    selected_index = next(i for i, s in enumerate(section_definitions) if s["label"] in selected_label)
-
-    if selected_index != st.session_state.section_index:
-        st.session_state.section_index = selected_index
+if st.session_state.section_index > 1:
+    if "identificacion" not in st.session_state or not st.session_state["identificacion"].get("ips_id", "").strip():
+        st.warning("⚠️ Por favor complete la sección de **Identificación de la IPS** antes de continuar.")
+        st.session_state.section_index = 1
         st.rerun()
 
 # ──────────────────────────────────────────────
-# Render Current Section
+# Cargar datos previos si existen (una vez)
 # ──────────────────────────────────────────────
+if st.session_state.get("identificacion") and not st.session_state.get("data_loaded", False):
+    ips_id = st.session_state["identificacion"].get("ips_id", "").strip().lower()
+    if ips_id:
+        existing_data = load_existing_data(ips_id)
+        if existing_data:
+            excluded_keys = {
+                "ips_id_input", "correo_responsable_input",
+                "nombre_responsable_input", "cargo_responsable_input",
+                "telefono_responsable_input"
+            }
+            clean_data = {k: v for k, v in existing_data.items() if k not in excluded_keys and not k.startswith("FormSubmitter:")}
+            st.session_state.update(clean_data)
+            st.info(f"📂 Datos restaurados para la IPS: `{ips_id}`.")
+        else:
+            st.info("🆕 No se encontraron datos anteriores para esta IPS.")
+        st.session_state["data_loaded"] = True
+        st.rerun()
 
-current_section = section_definitions[st.session_state.section_index]
+# ──────────────────────────────────────────────
+# Renderizar sección actual
+# ──────────────────────────────────────────────
 current_section["render"]()
 
 # ──────────────────────────────────────────────
-# Progress Bar
+# Navegación lateral
 # ──────────────────────────────────────────────
-
-completed_count, progress_percent = compute_progress(st.session_state, [s["key"] for s in section_definitions])
-
-st.progress(progress_percent, text=f"🔄 Progreso: {completed_count} de {len(section_definitions)} secciones completadas")
+with st.sidebar:
+    st.markdown("### 📑 Navegación")
+    status_labels = [
+        f"{'✅' if (section['key'] and st.session_state.get(section['key'], False)) else '🔲'} {section['label']}"
+        for section in section_definitions
+    ]
+    selected = st.selectbox("Ir a sección:", status_labels, index=st.session_state.section_index)
+    new_index = next(i for i, section in enumerate(section_definitions) if section['label'] in selected)
+    if new_index != st.session_state.section_index:
+        st.session_state.section_index = new_index
+        st.rerun()
 
 # ──────────────────────────────────────────────
-# Navigation Buttons
+# Barra de progreso
 # ──────────────────────────────────────────────
+tracked_flags = [s["key"] for s in section_definitions if s["key"]]
+completed_count, progress_percent = compute_progress(st.session_state, tracked_flags)
+st.progress(progress_percent, text=f"🔄 Progreso: {completed_count} de {len(tracked_flags)} secciones completadas")
 
+# ──────────────────────────────────────────────
+# Botones de navegación entre secciones
+# ──────────────────────────────────────────────
 col1, col2, _ = st.columns([1, 1, 6])
-
 with col1:
     if st.session_state.section_index > 0:
         if st.button("⬅️ Sección anterior"):
             st.session_state.section_index -= 1
             st.rerun()
-
 with col2:
     if st.session_state.section_index < len(section_definitions) - 1:
         if st.button("➡️ Siguiente sección"):
@@ -135,27 +117,30 @@ with col2:
             st.rerun()
 
 # ──────────────────────────────────────────────
-# Final Confirmation and Save
+# Finalización del formulario
 # ──────────────────────────────────────────────
-
 if st.session_state.section_index == len(section_definitions) - 1:
-    st.success("🎉 Ha llegado al final del formulario. Puede revisar cualquier sección si lo desea.")
+    st.success("🎉 Ha llegado al final del formulario.")
     if st.button("⬅️ Volver al inicio"):
         st.session_state.section_index = 0
         st.rerun()
 
+# ──────────────────────────────────────────────
+# Exportación final
+# ──────────────────────────────────────────────
 st.markdown("---")
 st.markdown("### 📤 Exportar Encuesta Completa")
 
-if st.button("Guardar encuesta como CSV y Google Sheets"):
+if st.button("Guardar encuesta en Google Sheets y respaldo local"):
     flat_data = flatten_session_state(st.session_state)
     success = append_or_update_row(flat_data)
     ips_name = st.session_state.get("identificacion", {}).get("ips_id", "IPS desconocida")
-
     if success:
-        st.success(f"✅ Encuesta de `{ips_name}` guardada exitosamente en respaldo.")
+        st.success(f"✅ Respuestas de `{ips_name}` guardadas exitosamente.")
     else:
-        st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
+        st.error("❌ Error al guardar los datos. Intente nuevamente.")
 
-st.markdown("<hr>", unsafe_allow_html=True)
+# ──────────────────────────────────────────────
+# Pie de página (siempre visible)
+# ──────────────────────────────────────────────
 render_footer()

@@ -18,7 +18,7 @@ def safe_int(value, default=0):
         return default
 
 def render():
-    st.header("9. 💰 Depreciación, Mantenimiento e Impuestos del BLH (Preguntas 28 a 31)")
+    st.header("11. 💰 Depreciación, Mantenimiento e Impuestos del BLH (Preguntas 28 a 31)")
 
     prefix = "depreciacion__"
     completion_flag = prefix + "completed"
