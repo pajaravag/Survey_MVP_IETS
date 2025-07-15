@@ -146,7 +146,13 @@ En caso de que algún ítem no aplique a su institución, deberá registrar el v
         st.session_state[prefix + "receptores_mes"] = receptores_mes
         st.session_state[prefix + "volumen_pasteurizada"] = volumen_pasteurizada_ml
         st.session_state[prefix + "leche_distribuida"] = leche_distribuida_ml
-        st.session_state[completion_flag] = True
+        st.session_state[completion_flag] = any([
+            donantes_mes > 0,
+            total_volumen > 0,
+            receptores_mes > 0,
+            volumen_pasteurizada_ml > 0,
+            leche_distribuida_ml > 0
+        ])
 
         flat_data = flatten_session_state(st.session_state)
         success = append_or_update_row(flat_data)

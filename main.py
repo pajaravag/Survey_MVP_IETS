@@ -6,7 +6,7 @@ import streamlit as st
 from sections import (
     intro, identification, general_info, donors_recipients,
     security_efficiency, costs, costs_equipos, supplies, staff,
-    utilities, transport, depreciation
+    utilities, transport
 )
 from utils.state_manager import compute_progress, flatten_session_state
 from utils.sheet_io import load_existing_data, append_or_update_row
@@ -32,8 +32,7 @@ section_definitions = [
     {"label": "7. Insumos Mensuales (Pregunta 19)", "key": "insumos_mensuales__completed", "render": supplies.render},
     {"label": "8. Personal del BLH (Pregunta 20)", "key": "personal_blh__completed", "render": staff.render},
     {"label": "9. Servicios Públicos (Pregunta 21)", "key": "servicios_publicos__completed", "render": utilities.render},
-    {"label": "10. Transporte y Recolección (Pregunta 22)", "key": "transporte_modalidades__completed", "render": transport.render},
-    {"label": "11. Depreciación e Impuestos (Pregunta 23)", "key": "depreciacion__completed", "render": depreciation.render},
+    {"label": "10. Transporte y Recolección (Preguntas 22 a 25)", "key": "transporte_modalidades__completed", "render": transport.render},
 ]
 
 # ──────────────────────────────────────────────

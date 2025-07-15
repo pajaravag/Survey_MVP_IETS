@@ -10,8 +10,9 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError):
         return default
 
+
 def render():
-    st.header("5. 💸 Costos Asociados al Proceso del Banco de Leche Humana (Preguntas 17 y 18)")
+    st.header("5. 💸 Costos por Proceso del Banco de Leche Humana (Preguntas 17 y 18)")
 
     prefix = "costos_blh__"
     completion_flag = prefix + "completed"
@@ -20,27 +21,27 @@ def render():
     prev_actividades = st.session_state.get(prefix + "actividades", {})
 
     # ──────────────────────────────────────────────
-    # Introducción oficial
+    # Instrucciones oficiales
     # ──────────────────────────────────────────────
     st.markdown(render_info_box("""
-**ℹ️ ¿Qué información debe registrar?**  
-En esta sección se solicita información relacionada con los **costos mensuales estimados** y las **actividades desarrolladas** por cada proceso del Banco de Leche Humana (BLH).  
-Si algún proceso no se realiza en su institución, registre el valor **cero (0)** y escriba **NA** en actividades.
+**ℹ️ ¿Qué debe registrar?**  
+Esta sección solicita el **costo mensual estimado** y las **actividades realizadas** por cada proceso del Banco de Leche Humana (BLH).  
 
-Los valores deben expresarse en **pesos colombianos (COP)**.
+- Si un proceso **no se realiza**, registre el valor **cero (0)** y escriba **“NA”** en actividades.  
+- Todos los valores deben expresarse en **pesos colombianos (COP)**.  
 """), unsafe_allow_html=True)
 
     st.markdown(render_compact_example_box("""
 📝 **Ejemplo práctico:**
 
-| Proceso                           | Costo mensual (COP) | Actividades                                                   |
-|----------------------------------|----------------------|---------------------------------------------------------------|
-| Transporte                       | 2.000.000            | Recolección en domicilios, uso de vehículo institucional      |
-| Reenvasado                       | 0                    | NA                                                            |
+| Proceso       | Costo mensual (COP) | Actividades                                        |
+|---------------|----------------------|----------------------------------------------------|
+| Transporte     | 2.000.000           | Recolección en domicilios con furgón refrigerado   |
+| Reenvasado     | 0                   | NA                                                 |
 """), unsafe_allow_html=True)
 
     # ──────────────────────────────────────────────
-    # Lista de procesos definidos por el instructivo
+    # Procesos definidos por el instructivo
     # ──────────────────────────────────────────────
     procesos = [
         "Captación, selección y acompañamiento de usuarias",
@@ -81,18 +82,18 @@ Los valores deben expresarse en **pesos colombianos (COP)**.
 
         with col3:
             actividad = st.text_input(
-                f"Actividades o NA - {proceso}",
+                f"Actividades realizadas (o escriba 'NA') - {proceso}",
                 value=prev_actividades.get(proceso, ""),
                 key=f"{prefix}actividad_{i}"
             )
 
         costos_data[proceso] = costo
-        actividades_data[proceso] = actividad.strip() or "NA"
+        actividades_data[proceso] = actividad.strip() if actividad.strip() else "NA"
 
         resumen_tabla.append({
             "Proceso": proceso,
             "Costo mensual (COP)": f"{costo:,.0f}".replace(",", "."),
-            "Actividades": actividad.strip() or "NA"
+            "Actividades": actividades_data[proceso]
         })
 
     # ──────────────────────────────────────────────
@@ -102,7 +103,7 @@ Los valores deben expresarse en **pesos colombianos (COP)**.
     st.table(resumen_tabla)
 
     # ──────────────────────────────────────────────
-    # Validación de completitud
+    # Validación y completitud
     # ──────────────────────────────────────────────
     is_complete = any(v > 0 for v in costos_data.values())
     st.session_state[completion_flag] = is_complete
@@ -119,8 +120,8 @@ Los valores deben expresarse en **pesos colombianos (COP)**.
         success = append_or_update_row(flat_data)
 
         if success:
-            st.success("✅ Costos y actividades guardados correctamente.")
-            if "section_index" in st.session_state and st.session_state.section_index < 10:
+            st.success("✅ Costos por proceso guardados correctamente.")
+            if "section_index" in st.session_state and st.session_state.section_index < 11:
                 st.session_state.section_index += 1
                 st.session_state.navigation_triggered = True
                 st.rerun()
