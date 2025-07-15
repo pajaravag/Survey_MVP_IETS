@@ -38,8 +38,13 @@ section_definitions = [
 # ──────────────────────────────────────────────
 # Inicializar índice de navegación
 # ──────────────────────────────────────────────
-if "section_index" not in st.session_state:
+total_sections = len(section_definitions)
+if "section_index" not in st.session_state or not isinstance(st.session_state.section_index, int):
     st.session_state.section_index = 0
+elif st.session_state.section_index < 0:
+    st.session_state.section_index = 0
+elif st.session_state.section_index >= total_sections:
+    st.session_state.section_index = total_sections - 1
 
 current_section = section_definitions[st.session_state.section_index]
 
@@ -110,7 +115,7 @@ with col1:
             st.session_state.section_index -= 1
             st.rerun()
 with col2:
-    if st.session_state.section_index < len(section_definitions) - 1:
+    if st.session_state.section_index < total_sections - 1:
         if st.button("➡️ Siguiente sección"):
             st.session_state.section_index += 1
             st.rerun()
@@ -118,7 +123,7 @@ with col2:
 # ──────────────────────────────────────────────
 # Finalización del formulario
 # ──────────────────────────────────────────────
-if st.session_state.section_index == len(section_definitions) - 1:
+if st.session_state.section_index == total_sections - 1:
     st.success("🎉 Ha llegado al final del formulario.")
     if st.button("⬅️ Volver al inicio"):
         st.session_state.section_index = 0
