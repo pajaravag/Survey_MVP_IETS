@@ -12,7 +12,7 @@ def flatten_session_state(d, parent_key='', sep='__'):
 
     - Convierte listas de diccionarios en JSON-like strings.
     - Convierte listas simples en cadenas separadas por comas.
-    - Convierte booleanos en "Sí" / "No" para mejor legibilidad.
+    - Deja booleanos en su forma original (True/False), para restauración segura.
 
     Args:
         d (dict): Diccionario aplanar (ej: st.session_state).
@@ -29,15 +29,13 @@ def flatten_session_state(d, parent_key='', sep='__'):
             items.update(flatten_session_state(v, new_key, sep=sep))
         elif isinstance(v, list):
             if all(isinstance(i, dict) for i in v):
-                # Convertir listas de diccionarios a string JSON-like
                 items[new_key] = str(v)
             else:
                 items[new_key] = ", ".join(map(str, v))
-        elif isinstance(v, bool):
-            items[new_key] = "Sí" if v else "No"
         else:
-            items[new_key] = v
+            items[new_key] = v  # Conserva bool como bool
     return items
+
 
 
 # ──────────────────────────────────────────────

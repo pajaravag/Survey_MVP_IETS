@@ -1,4 +1,6 @@
 import streamlit as st
+import ast
+
 from utils.sheet_io import append_or_update_row
 from utils.state_manager import flatten_session_state
 from utils.ui_styles import render_info_box, render_data_protection_box, render_compact_example_box
@@ -8,7 +10,14 @@ def render():
     st.header("2. 📋 Datos Generales del Banco de Leche Humana (Preguntas 1 a 4)")
 
     # ──────────────────────────────────────────────
-    # Instrucciones de contexto técnico
+    # 🔄 Limpiar claves corruptas (checklist no booleanas)
+    # ──────────────────────────────────────────────
+    for k in list(st.session_state.keys()):
+        if "datos_generales__procesos_" in k and not isinstance(st.session_state[k], bool):
+            del st.session_state[k]
+
+    # ──────────────────────────────────────────────
+    # ℹ️ Instrucciones, ejemplos y protección de datos
     # ──────────────────────────────────────────────
     st.markdown(render_info_box("""
 **ℹ️ Objetivo de la sección**  
@@ -30,13 +39,15 @@ Los datos serán tratados bajo la Ley 1581 de 2012 de Habeas Data y utilizados e
 """), unsafe_allow_html=True)
 
     # ──────────────────────────────────────────────
-    # Prefijos y estado de sesión
+    # 📌 Estado y claves de sección
     # ──────────────────────────────────────────────
     prefix = "datos_generales__"
     completion_flag = prefix + "completed"
+    procesos_key = prefix + "procesos"
+    otros_key = prefix + "otros_procesos"
 
     # ──────────────────────────────────────────────
-    # Pregunta 1️⃣ Nombre de la institución
+    # Pregunta 1️⃣ - Nombre institución
     # ──────────────────────────────────────────────
     nombre = st.text_input(
         "1️⃣ 🏥 Nombre completo y oficial de la institución:",
@@ -45,7 +56,7 @@ Los datos serán tratados bajo la Ley 1581 de 2012 de Habeas Data y utilizados e
     )
 
     # ──────────────────────────────────────────────
-    # Pregunta 2️⃣ Tipo de institución
+    # Pregunta 2️⃣ - Tipo de institución
     # ──────────────────────────────────────────────
     tipo_inst_options = ["Hospital público", "Clínica privada", "Mixta"]
     tipo_inst_selected = st.multiselect(
@@ -56,7 +67,7 @@ Los datos serán tratados bajo la Ley 1581 de 2012 de Habeas Data y utilizados e
     )
 
     # ──────────────────────────────────────────────
-    # Pregunta 3️⃣ Año de implementación del BLH
+    # Pregunta 3️⃣ - Año de implementación
     # ──────────────────────────────────────────────
     anio_impl = st.text_input(
         "3️⃣ 📅 Año de implementación del BLH (formato AAAA):",
@@ -65,12 +76,9 @@ Los datos serán tratados bajo la Ley 1581 de 2012 de Habeas Data y utilizados e
     )
 
     # ──────────────────────────────────────────────
-    # Pregunta 4️⃣ Procesos estandarizados implementados
+    # Pregunta 4️⃣ - Procesos estandarizados
     # ──────────────────────────────────────────────
     st.subheader("4️⃣ 🔄 Procesos estandarizados realizados por su BLH")
-
-    procesos_key = prefix + "procesos"
-    otros_key = prefix + "otros_procesos"
 
     procesos_disponibles = [
         "Captación, Selección y Acompañamiento de Usuarias",
@@ -87,12 +95,22 @@ Los datos serán tratados bajo la Ley 1581 de 2012 de Habeas Data y utilizados e
         "Seguimiento y Trazabilidad"
     ]
 
+    # Cargar estado anterior
     procesos_previos = st.session_state.get(procesos_key, [])
+    if isinstance(procesos_previos, str):
+        try:
+            procesos_previos = ast.literal_eval(procesos_previos)
+        except Exception:
+            procesos_previos = []
+
     otros_previos = st.session_state.get(otros_key, "")
 
+    # Mostrar checkboxes
     seleccionados = []
     for proceso in procesos_disponibles:
-        if st.checkbox(proceso, value=(proceso in procesos_previos), key=f"{procesos_key}_{proceso}"):
+        key = f"{procesos_key}_{proceso}"
+        default_value = bool(st.session_state.get(key, proceso in procesos_previos))
+        if st.checkbox(proceso, value=default_value, key=key):
             seleccionados.append(proceso)
 
     otros_procesos = st.text_area(
@@ -102,9 +120,9 @@ Los datos serán tratados bajo la Ley 1581 de 2012 de Habeas Data y utilizados e
     )
 
     # ──────────────────────────────────────────────
-    # Validación de completitud
+    # Botón de guardado y validación
     # ──────────────────────────────────────────────
-    if st.button("💾 Guardar sección - Datos Generales"):
+    if st.button("📏 Guardar sección - Datos Generales"):
         errores = []
 
         if not nombre.strip():
@@ -121,6 +139,7 @@ Los datos serán tratados bajo la Ley 1581 de 2012 de Habeas Data y utilizados e
             for e in errores:
                 st.markdown(f"- {e}")
         else:
+            # Guardar en session_state
             st.session_state[prefix + "nombre_inst"] = nombre.strip()
             st.session_state[prefix + "tipo_inst"] = tipo_inst_selected
             st.session_state[prefix + "anio_impl"] = anio_impl.strip()
@@ -128,6 +147,7 @@ Los datos serán tratados bajo la Ley 1581 de 2012 de Habeas Data y utilizados e
             st.session_state[otros_key] = otros_procesos.strip()
             st.session_state[completion_flag] = True
 
+            # Guardar en Sheets / CSV
             flat_data = flatten_session_state(st.session_state)
             success = append_or_update_row(flat_data)
 

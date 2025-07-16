@@ -23,7 +23,8 @@ VEHICULOS_OPCIONES = [
     "Camioneta o furgoneta",
     "Furgón refrigerado",
     "Bicicleta adaptada con caja isotérmica",
-    "A pie (con termos isotérmicos)"
+    "A pie (con termos isotérmicos)",
+    "Otros"
 ]
 
 def render():
