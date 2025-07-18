@@ -38,9 +38,7 @@ def render():
     zonas_prev = st.session_state.get(prefix + "zonas", {})
     vehiculos_prev = st.session_state.get(prefix + "vehiculos", [])
 
-    # ──────────────────────────────────────────────
-    # Pregunta 24: Modalidades de recolección
-    # ──────────────────────────────────────────────
+    # Pregunta 24
     st.subheader("2️⃣4️⃣ Modalidades de recolección de leche humana")
     st.markdown(render_info_box("""
 **¿Dónde recibe su BLH las donaciones de leche humana?**  
@@ -53,9 +51,7 @@ Marque todas las opciones que apliquen.
         "Centros de recolección": st.radio("Centros de recolección", ["Sí", "No"], index=0 if modalidades_prev.get("Centros de recolección", "No") == "Sí" else 1, horizontal=True),
     }
 
-    # ──────────────────────────────────────────────
-    # Pregunta 25: Equipos especiales
-    # ──────────────────────────────────────────────
+    # Pregunta 25
     st.subheader("2️⃣5️⃣ Equipos especializados para el transporte")
     st.markdown(render_info_box("""
 **¿La institución ha adquirido equipos especializados (termos, cajas isotérmicas, etc.) para el transporte de leche humana?**
@@ -68,9 +64,7 @@ Marque todas las opciones que apliquen.
         horizontal=True
     )
 
-    # ──────────────────────────────────────────────
-    # Pregunta 26: Detalle por zona
-    # ──────────────────────────────────────────────
+    # Pregunta 26
     st.subheader("2️⃣6️⃣ Detalle operativo por zona de recolección")
 
     zonas_example = {
@@ -89,18 +83,31 @@ Marque todas las opciones que apliquen.
     for zona in zonas:
         prev = zonas_prev.get(zona, {})
         st.markdown(f"**{zona}**")
-        volumen = st.number_input(f"Volumen mensual recolectado (ml) - {zona}:", min_value=0.0, step=100.0, value=safe_float(prev.get("volumen_ml", 0.0)), key=f"{zona}_volumen")
-        kilometros = st.number_input(f"Kilometraje mensual (km) - {zona}:", min_value=0.0, step=1.0, value=safe_float(prev.get("km", 0.0)), key=f"{zona}_km")
-        costo = st.number_input(f"Costo mensual estimado (COP) - {zona}:", min_value=0.0, step=1000.0, value=safe_float(prev.get("costo", 0.0)), key=f"{zona}_costo")
+        volumen = st.number_input(
+            f"Volumen mensual recolectado (ml) - {zona}:",
+            min_value=0.0, step=100.0,
+            value=safe_float(prev.get("volumen_ml", 0.0)),
+            key=f"{zona}_volumen"
+        )
+        kilometros = st.number_input(
+            f"Kilometraje mensual (km) - {zona}:",
+            min_value=0.0, step=1.0,
+            value=safe_float(prev.get("km", 0.0)),
+            key=f"{zona}_km"
+        )
+        costo = st.number_input(
+            f"Costo mensual estimado (COP) - {zona}:",
+            min_value=0.0, step=1000.0,
+            value=safe_float(prev.get("costo", 0.0)),
+            key=f"{zona}_costo"
+        )
         zonas_data[zona] = {
             "volumen_ml": volumen,
             "km": kilometros,
             "costo": costo
         }
 
-    # ──────────────────────────────────────────────
-    # Pregunta 27: Vehículos utilizados
-    # ──────────────────────────────────────────────
+    # Pregunta 27
     st.subheader("2️⃣7️⃣ Vehículos utilizados para recolección")
     st.markdown(render_info_box("""
 **Indique los vehículos utilizados para la recolección de leche humana:**  
@@ -112,22 +119,46 @@ Para cada vehículo indique:
 - Tipo de propiedad
     """), unsafe_allow_html=True)
 
-    num_vehiculos = st.number_input("Número de vehículos utilizados:", min_value=0, step=1, value=len(vehiculos_prev))
+    num_vehiculos = st.number_input(
+        "Número de vehículos utilizados:",
+        min_value=0, step=1,
+        value=len(vehiculos_prev)
+    )
 
     vehiculos_data = []
     for i in range(num_vehiculos):
         with st.expander(f"🚗 Vehículo #{i+1}"):
             prev = vehiculos_prev[i] if i < len(vehiculos_prev) else {}
+
             tipo = st.selectbox(
                 "Tipo de vehículo (según lista oficial):",
                 VEHICULOS_OPCIONES,
                 index=VEHICULOS_OPCIONES.index(prev.get("tipo")) if prev.get("tipo") in VEHICULOS_OPCIONES else 0,
                 key=f"vehiculo_tipo_{i}"
             )
-            marca_modelo_anio = st.text_input("Marca, modelo y año:", value=prev.get("marca_modelo", ""), key=f"vehiculo_marca_{i}")
-            volumen_max = st.number_input("Volumen máximo por viaje (ml):", min_value=0.0, step=100.0, value=safe_float(prev.get("volumen_viaje_ml", 0.0)), key=f"vehiculo_volumen_{i}")
-            viajes_mes = st.number_input("Número de viajes al mes:", min_value=0, step=1, value=safe_int(prev.get("viajes_mes", 0)), key=f"vehiculo_viajes_{i}")
-            propiedad = st.selectbox("Tipo de propiedad:", ["Propio institucional", "Alquilado", "Prestado", "Donado"], index=0, key=f"vehiculo_propiedad_{i}")
+            marca_modelo_anio = st.text_input(
+                "Marca, modelo y año:",
+                value=prev.get("marca_modelo", ""),
+                key=f"vehiculo_marca_{i}"
+            )
+            volumen_max = st.number_input(
+                "Volumen máximo por viaje (ml):",
+                min_value=0.0, step=100.0,
+                value=safe_float(prev.get("volumen_viaje_ml", 0.0)),
+                key=f"vehiculo_volumen_{i}"
+            )
+            viajes_mes = st.number_input(
+                "Número de viajes al mes:",
+                min_value=0, step=1,
+                value=safe_int(prev.get("viajes_mes", 0)),
+                key=f"vehiculo_viajes_{i}"
+            )
+            propiedad = st.selectbox(
+                "Tipo de propiedad:",
+                ["Propio institucional", "Alquilado", "Prestado", "Donado"],
+                index=0,
+                key=f"vehiculo_propiedad_{i}"
+            )
 
             vehiculos_data.append({
                 "tipo": tipo,
@@ -137,13 +168,16 @@ Para cada vehículo indique:
                 "propiedad": propiedad
             })
 
-    # ──────────────────────────────────────────────
-    # Validación y Guardado
-    # ──────────────────────────────────────────────
+    # Validación y guardado
     is_complete = (
         any(v == "Sí" for v in modalidades.values()) or
         equipos_especiales == "Sí" or
-        any(z["volumen_ml"] > 0 or z["km"] > 0 or z["costo"] > 0 for z in zonas_data.values()) or
+        any(
+            safe_float(z.get("volumen_ml", 0)) > 0 or
+            safe_float(z.get("km", 0)) > 0 or
+            safe_float(z.get("costo", 0)) > 0
+            for z in zonas_data.values()
+        ) or
         len(vehiculos_data) > 0
     )
 

@@ -69,3 +69,11 @@ def render_compact_example_box(markdown_content: str) -> str:
         {html_content}
     </div>
     """
+
+def render_box(content):
+    return f"""
+    <div style='padding: 0.5rem; border: 1px solid #CCC; border-radius: 5px; background-color: #f9f9f9'>
+    {content}
+    </div>
+    """ 
+

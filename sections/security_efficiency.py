@@ -4,17 +4,23 @@ from utils.sheet_io import append_or_update_row
 from utils.ui_styles import render_info_box, render_compact_example_box
 
 # 🔐 Safe conversion helpers
-def safe_int(value, default=0):
+def safe_int(value, default=1, min_val=1):
     try:
-        return int(float(value))
+        result = int(float(value))
+        return max(result, min_val)
     except (ValueError, TypeError):
         return default
 
-def safe_float(value, default=0.0):
+def safe_float(value, default=0.0, min_val=0.0):
     try:
-        return float(value)
+        result = float(value)
+        return max(result, min_val)
     except (ValueError, TypeError):
         return default
+
+def safe_radio_index(options, value, fallback="No"):
+    clean_value = str(value).strip()
+    return options.index(clean_value) if clean_value in options else options.index(fallback)
 
 def render():
     st.header("4. 🔐 Seguridad y Eficiencia del Banco de Leche Humana (Preguntas 11 a 16)")
@@ -38,55 +44,58 @@ Para los volúmenes con decimales, utilice una **coma** como separador decimal (
 - Descripción: *Control antes y después de la pasteurización con pruebas de cultivo.*
 """), unsafe_allow_html=True)
 
+    # ──────────────────────────────────────────────
+    # Estado
+    # ──────────────────────────────────────────────
     prefix = "seguridad_eficiencia__"
     completion_flag = prefix + "completed"
     data = st.session_state
 
     # ──────────────────────────────────────────────
-    # Pregunta 14 fuera del formulario
+    # Pregunta 14 - Control microbiológico
     # ──────────────────────────────────────────────
     st.subheader("1️⃣4️⃣ ¿Se realiza control microbiológico?")
+    options = ["Sí", "No", "No aplica"]
+    selected_option = data.get(prefix + "control_microbiologico", "No")
+    index = safe_radio_index(options, selected_option)
+
     control_microbiologico = st.radio(
         "Por favor indique si su institución realiza control microbiológico:",
-        ["Sí", "No", "No aplica"],
-        index=["Sí", "No", "No aplica"].index(data.get(prefix + "control_microbiologico", "No")),
+        options,
+        index=index,
         horizontal=True,
         key=prefix + "control_microbiologico_radio"
     )
     st.session_state[prefix + "control_microbiologico"] = control_microbiologico
 
     # ──────────────────────────────────────────────
-    # Formulario
+    # Formulario principal
     # ──────────────────────────────────────────────
     with st.form("seguridad_eficiencia_form"):
-        # Pregunta 11
         volumen_estandares = st.number_input(
             "1️⃣1️⃣ Volumen promedio de leche descartada por no cumplir estándares (ml):",
             min_value=0.0,
             step=1.0,
-            value=safe_float(data.get(prefix + "volumen_estandares", 0.0)),
+            value=safe_float(data.get(prefix + "volumen_estandares", 0.0), min_val=0.0),
             help="Si no se descarta leche, registre 0."
         )
 
-        # Pregunta 12
         volumen_vencimiento = st.number_input(
             "1️⃣2️⃣ Volumen promedio de leche descartada por vencimiento (ml):",
             min_value=0.0,
             step=1.0,
-            value=safe_float(data.get(prefix + "volumen_vencimiento", 0.0)),
+            value=safe_float(data.get(prefix + "volumen_vencimiento", 0.0), min_val=0.0),
             help="Si no se descarta leche por vencimiento, registre 0."
         )
 
-        # Pregunta 13
         tiempo_distribucion = st.number_input(
             "1️⃣3️⃣ Tiempo promedio desde la recolección hasta la distribución (días):",
             min_value=1,
             step=1,
-            value=safe_int(data.get(prefix + "tiempo_distribucion", 1)),
+            value=safe_int(data.get(prefix + "tiempo_distribucion", 1), min_val=1),
             help="Si es menor a un día, registre 1."
         )
 
-        # Pregunta 15 (Condicional)
         descripcion_control = ""
         if control_microbiologico == "Sí":
             st.subheader("1️⃣5️⃣ Describa el proceso de control microbiológico:")
@@ -98,10 +107,11 @@ Para los volúmenes con decimales, utilice una **coma** como separador decimal (
         else:
             descripcion_control = "NA"
 
+        # ✅ Botón de envío debe ir dentro del form
         submitted = st.form_submit_button("💾 Guardar sección - Seguridad y Eficiencia")
 
     # ──────────────────────────────────────────────
-    # Procesamiento
+    # Guardado final
     # ──────────────────────────────────────────────
     if submitted:
         st.session_state[prefix + "volumen_estandares"] = volumen_estandares

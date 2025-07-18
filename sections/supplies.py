@@ -10,6 +10,7 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError):
         return default
 
+
 def render():
     st.header("7. 💊 Insumos del Banco de Leche Humana (Pregunta 21)")
 
@@ -92,7 +93,8 @@ Si no aplica, registre **0**. Puede usar la categoría **"Otros"** para registra
                 with col2:
                     cantidad = st.number_input(
                         f"Cantidad mensual - {insumo}",
-                        min_value=0.0, step=1.0,
+                        min_value=0.0,
+                        step=1.0,
                         value=safe_float(prev.get("cantidad", 0.0)),
                         key=f"{prefix}_{proceso}_{insumo}_cantidad"
                     )
@@ -100,7 +102,8 @@ Si no aplica, registre **0**. Puede usar la categoría **"Otros"** para registra
                 with col3:
                     costo = st.number_input(
                         f"Costo por unidad (COP) - {insumo}",
-                        min_value=0.0, step=100.0,
+                        min_value=0.0,
+                        step=100.0,
                         value=safe_float(prev.get("costo", 0.0)),
                         key=f"{prefix}_{proceso}_{insumo}_costo"
                     )
@@ -112,11 +115,17 @@ Si no aplica, registre **0**. Puede usar la categoría **"Otros"** para registra
                 }
 
     # ──────────────────────────────────────────────
-    # Validación de Completitud
+    # Validación de Completitud segura
     # ──────────────────────────────────────────────
 
+    def is_positive(value):
+        try:
+            return float(value) > 0
+        except (ValueError, TypeError):
+            return False
+
     is_complete = any(
-        any(v["cantidad"] > 0 or v["costo"] > 0 for v in insumos.values())
+        any(is_positive(v.get("cantidad", 0)) or is_positive(v.get("costo", 0)) for v in insumos.values())
         for insumos in insumos_data.values()
     )
     st.session_state[completion_flag] = is_complete

@@ -39,7 +39,7 @@ Los datos serán tratados bajo la Ley 1581 de 2012 de Habeas Data y utilizados e
 """), unsafe_allow_html=True)
 
     # ──────────────────────────────────────────────
-    # 📌 Estado y claves de sección
+    # 📌 Estado y claves
     # ──────────────────────────────────────────────
     prefix = "datos_generales__"
     completion_flag = prefix + "completed"
@@ -105,12 +105,14 @@ Los datos serán tratados bajo la Ley 1581 de 2012 de Habeas Data y utilizados e
 
     otros_previos = st.session_state.get(otros_key, "")
 
-    # Mostrar checkboxes
+    # Mostrar checkboxes (no pasar `value=...` para evitar conflicto con `key`)
     seleccionados = []
     for proceso in procesos_disponibles:
         key = f"{procesos_key}_{proceso}"
-        default_value = bool(st.session_state.get(key, proceso in procesos_previos))
-        if st.checkbox(proceso, value=default_value, key=key):
+        # Solo definimos el valor inicial si la clave aún no existe
+        if key not in st.session_state:
+            st.session_state[key] = proceso in procesos_previos
+        if st.checkbox(proceso, key=key):
             seleccionados.append(proceso)
 
     otros_procesos = st.text_area(
