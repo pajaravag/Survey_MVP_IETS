@@ -1,13 +1,12 @@
 import streamlit as st
 from utils.ui_styles import render_info_box, render_data_protection_box
 
-
 def render():
     st.title("📄 Formulario Nacional para Bancos de Leche Humana (BLH)")
     st.subheader("Instituto de Evaluación Tecnológica en Salud (IETS)")
 
     # ──────────────────────────────────────────────
-    # Propósito y contexto legal
+    # 🎯 Propósito y contexto legal
     # ──────────────────────────────────────────────
     st.markdown(render_info_box("""
 **🎯 Objetivo del estudio:**  
@@ -19,7 +18,20 @@ Su participación es fundamental para **fortalecer esta estrategia nacional de s
 """), unsafe_allow_html=True)
 
     # ──────────────────────────────────────────────
-    # Nota legal de confidencialidad
+    # 📘 Instructivo descargable
+    # ──────────────────────────────────────────────
+    st.markdown("""
+### 📘 ¿Necesita orientación detallada?
+
+Para conocer en profundidad el propósito, contenido y estructura de este formulario, puede consultar el instructivo oficial en formato PDF:
+
+👉 [**Descargar Instructivo BLH (PDF)**](https://drive.google.com/file/d/1gjoWON6hhYTMQrSvF95yQ04nG5Nc0YfL/view?usp=share_link)
+
+> *Este documento contiene definiciones clave, ejemplos ilustrativos y lineamientos técnicos del IETS.*
+""")
+
+    # ──────────────────────────────────────────────
+    # 🔐 Nota legal de confidencialidad
     # ──────────────────────────────────────────────
     st.markdown(render_data_protection_box("""
 🔐 **Nota legal sobre protección de datos personales:**  
@@ -29,7 +41,7 @@ La información está protegida por el **derecho fundamental de Habeas Data** (C
 """), unsafe_allow_html=True)
 
     # ──────────────────────────────────────────────
-    # Instrucciones operativas
+    # 🧭 Instrucciones operativas
     # ──────────────────────────────────────────────
     st.markdown("""
 ### 🧭 ¿Cómo diligenciar el formulario?
@@ -45,7 +57,7 @@ La información está protegida por el **derecho fundamental de Habeas Data** (C
 """)
 
     # ──────────────────────────────────────────────
-    # Acción para iniciar
+    # 🚀 Acción para iniciar
     # ──────────────────────────────────────────────
     st.info("Presione el siguiente botón para iniciar la encuesta con la sección 1: **Datos Generales del BLH**.")
 
@@ -53,4 +65,3 @@ La información está protegida por el **derecho fundamental de Habeas Data** (C
         st.session_state.section_index = 1
         st.session_state.navigation_triggered = True
         st.rerun()
-
