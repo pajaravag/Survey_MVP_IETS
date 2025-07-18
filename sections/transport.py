@@ -24,8 +24,9 @@ VEHICULOS_OPCIONES = [
     "Furgón refrigerado",
     "Bicicleta adaptada con caja isotérmica",
     "A pie (con termos isotérmicos)",
-    "Otros"
+    "Otro"
 ]
+OTRO_IDX = len(VEHICULOS_OPCIONES) - 1  # Índice de la opción "Otro"
 
 def render():
     st.header("10. 🚚 Transporte y Recolección de Leche Humana (Preguntas 24 a 27)")
@@ -39,7 +40,7 @@ def render():
     vehiculos_prev = st.session_state.get(prefix + "vehiculos", [])
 
     # Pregunta 24
-    st.subheader("2️⃣4️⃣ Modalidades de recolección de leche humana")
+    st.subheader("24. Modalidades de recolección de leche humana")
     st.markdown(render_info_box("""
 **¿Dónde recibe su BLH las donaciones de leche humana?**  
 Marque todas las opciones que apliquen.
@@ -52,7 +53,7 @@ Marque todas las opciones que apliquen.
     }
 
     # Pregunta 25
-    st.subheader("2️⃣5️⃣ Equipos especializados para el transporte")
+    st.subheader("25. Equipos especializados para el transporte")
     st.markdown(render_info_box("""
 **¿La institución ha adquirido equipos especializados (termos, cajas isotérmicas, etc.) para el transporte de leche humana?**
     """), unsafe_allow_html=True)
@@ -65,7 +66,7 @@ Marque todas las opciones que apliquen.
     )
 
     # Pregunta 26
-    st.subheader("2️⃣6️⃣ Detalle operativo por zona de recolección")
+    st.subheader("26. Detalle operativo por zona de recolección")
 
     zonas_example = {
         "Zona": ["Zona urbana", "Zona rural", "Zonas rurales alejadas"],
@@ -74,7 +75,7 @@ Marque todas las opciones que apliquen.
         "Costo mensual (COP)": [200000, 350000, 450000]
     }
 
-    st.markdown(render_compact_example_box("📝 **Ejemplo:**"), unsafe_allow_html=True)
+    st.markdown(render_compact_example_box("📜 **Ejemplo:**"), unsafe_allow_html=True)
     st.table(zonas_example)
 
     zonas = ["Zona urbana", "Zona rural", "Zonas rurales alejadas"]
@@ -108,7 +109,7 @@ Marque todas las opciones que apliquen.
         }
 
     # Pregunta 27
-    st.subheader("2️⃣7️⃣ Vehículos utilizados para recolección")
+    st.subheader("27. Vehículos utilizados para recolección")
     st.markdown(render_info_box("""
 **Indique los vehículos utilizados para la recolección de leche humana:**  
 Para cada vehículo indique:
@@ -130,12 +131,22 @@ Para cada vehículo indique:
         with st.expander(f"🚗 Vehículo #{i+1}"):
             prev = vehiculos_prev[i] if i < len(vehiculos_prev) else {}
 
+            tipo_idx = VEHICULOS_OPCIONES.index(prev.get("tipo")) if prev.get("tipo") in VEHICULOS_OPCIONES else 0
             tipo = st.selectbox(
                 "Tipo de vehículo (según lista oficial):",
                 VEHICULOS_OPCIONES,
-                index=VEHICULOS_OPCIONES.index(prev.get("tipo")) if prev.get("tipo") in VEHICULOS_OPCIONES else 0,
+                index=tipo_idx,
                 key=f"vehiculo_tipo_{i}"
             )
+
+            otro_tipo = ""
+            if tipo == "Otro":
+                otro_tipo = st.text_input(
+                    "Por favor describa el otro tipo de vehículo:",
+                    value=prev.get("otro_tipo", ""),
+                    key=f"vehiculo_otro_tipo_{i}"
+                )
+
             marca_modelo_anio = st.text_input(
                 "Marca, modelo y año:",
                 value=prev.get("marca_modelo", ""),
@@ -160,13 +171,17 @@ Para cada vehículo indique:
                 key=f"vehiculo_propiedad_{i}"
             )
 
-            vehiculos_data.append({
+            vehiculo = {
                 "tipo": tipo,
                 "marca_modelo": marca_modelo_anio,
                 "volumen_viaje_ml": volumen_max,
                 "viajes_mes": viajes_mes,
                 "propiedad": propiedad
-            })
+            }
+            if tipo == "Otro":
+                vehiculo["otro_tipo"] = otro_tipo.strip()
+
+            vehiculos_data.append(vehiculo)
 
     # Validación y guardado
     is_complete = (
@@ -183,7 +198,7 @@ Para cada vehículo indique:
 
     st.session_state[completion_flag] = is_complete
 
-    if st.button("💾 Guardar sección - Transporte y Recolección"):
+    if st.button("📂 Guardar sección - Transporte y Recolección"):
         st.session_state[prefix + "modalidades"] = modalidades
         st.session_state[prefix + "equipos_especiales"] = equipos_especiales
         st.session_state[prefix + "zonas"] = zonas_data
