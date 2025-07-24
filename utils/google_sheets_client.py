@@ -3,7 +3,7 @@ import pandas as pd
 import streamlit as st
 
 # 🔑 ID centralizado de Google Sheets desde st.secrets
-SPREADSHEET_ID = st.secrets["gcp"]["sheet_id"]
+SPREADSHEET_ID = st.secrets["gspread"]["sheet_id"]
 
 # ──────────────────────────────────────────────
 # 1️⃣ Conexión segura a Google Sheets
