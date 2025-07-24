@@ -1,162 +1,219 @@
+# utils/sheet_io.py
+
+from typing import Optional
 import streamlit as st
-import pandas as pd
 import ast
 
 from utils.google_sheets_client import get_worksheet, get_google_sheet_df
-from config import MASTER_CSV  # Ruta local para respaldo
+from utils.constants import MINIMUM_HEADERS_BY_SECTION
 
 # ──────────────────────────────────────────────
-# 🧠 Deserializador de valores string → tipo real
+# 🔁 Deserializador de valores string → tipo real
 # ──────────────────────────────────────────────
 def _deserialize_value(value):
-    """
-    Convierte un valor string recuperado desde Google Sheets a su tipo original si es posible.
-
-    - Convierte 'True'/'False' a booleano
-    - Convierte números enteros
-    - Convierte listas serializadas (['a', 'b'])
-    - Convierte strings separados por coma a listas
-    """
+    """Convierte strings en su representación Python si aplica."""
     if isinstance(value, str):
         val = value.strip()
-
         if val.lower() in ["true", "false"]:
             return val.lower() == "true"
-
         if val.isdigit():
             return int(val)
-
         try:
             parsed = ast.literal_eval(val)
             if isinstance(parsed, (list, dict)):
                 return parsed
         except (ValueError, SyntaxError):
             pass
-
         if "," in val:
             return [v.strip() for v in val.split(",")]
-
     return value
 
 # ──────────────────────────────────────────────
-# 1️⃣ Cargar datos existentes por IPS
+# 🧼 Limpieza y normalización del ID de IPS
 # ──────────────────────────────────────────────
-def load_existing_data(ips_id, sheet_name="Sheet1"):
-    """
-    Carga los datos previamente guardados para una IPS desde Google Sheets
-    y los deserializa a sus tipos originales para compatibilidad con Streamlit.
-    """
-    df = get_google_sheet_df(sheet_name=sheet_name)
+def _get_cleaned_ips_id(data: dict) -> str:
+    return data.get("ips_id", "").strip().lower()
 
-    if df.empty or not ips_id:
+# ──────────────────────────────────────────────
+# 📋 Asegura que la hoja tenga todos los encabezados requeridos
+# ──────────────────────────────────────────────
+def _ensure_headers(sheet, required_keys: list) -> list:
+    """
+    Garantiza que la hoja tenga todos los encabezados requeridos.
+    Si no existen, los crea. Si faltan, los agrega al final.
+    """
+    if not required_keys:
+        st.warning("⚠️ No se puede crear hoja sin encabezados válidos.")
+        return []
+    try:
+        current_headers = sheet.row_values(1)
+    except Exception:
+        current_headers = []
+    if not current_headers:
+        # Hoja vacía: se crean todos los headers necesarios.
+        sheet.resize(rows=1000, cols=len(required_keys))
+        sheet.update("A1", [required_keys])
+        return required_keys
+    # Agrega headers que falten al final.
+    missing = [k for k in required_keys if k not in current_headers]
+    if missing:
+        updated_headers = current_headers + missing
+        sheet.resize(rows=sheet.row_count or 1000, cols=len(updated_headers))
+        sheet.update("A1", [updated_headers])
+        return updated_headers
+    return current_headers
+
+# ──────────────────────────────────────────────
+# 🔄 Precarga datos existentes para un IPS en una sección (por hoja)
+# ──────────────────────────────────────────────
+def load_existing_data(ips_id: str, sheet_name: str = "Sheet1") -> Optional[dict]:
+    if not ips_id:
         return None
-
-    matched = df[df['identificacion__ips_id'].str.strip().str.lower() == ips_id.strip().lower()]
+    df = get_google_sheet_df(sheet_name=sheet_name)
+    if df.empty or "ips_id" not in df.columns:
+        return None
+    matched = df[df['ips_id'].str.strip().str.lower() == ips_id.strip().lower()]
     if matched.empty:
         return None
-
     raw_dict = matched.iloc[0].dropna().to_dict()
-
-    # Normalizar tipos de datos
     typed_dict = {k: _deserialize_value(v) for k, v in raw_dict.items()}
     return typed_dict
 
 # ──────────────────────────────────────────────
-# 2️⃣ Guardar o actualizar fila en Google Sheets y CSV
+# 🚀 Guarda/actualiza una fila para una sección/hoja (dict plano)
 # ──────────────────────────────────────────────
-def append_or_update_row(flat_data: dict, sheet_name="Sheet1"):
-    """
-    Guarda o actualiza los datos de la encuesta en Google Sheets y respaldo local CSV.
-    """
+def append_or_update_row(flat_data: dict, sheet_name: str = "Sheet1") -> bool:
     try:
         sheet = get_worksheet(sheet_name=sheet_name)
-        ips_id = flat_data.get("identificacion__ips_id", "").strip().lower()
+        ips_id = _get_cleaned_ips_id(flat_data)
 
         if not ips_id:
-            st.error("❌ El campo `identificacion__ips_id` es obligatorio para guardar.")
+            st.error("❌ El campo `ips_id` es obligatorio para guardar.")
             return False
 
-        headers = sheet.row_values(1)
+        # Si es una sección estructurada (como costs_blh__), usar headers fijos del constants.
+        expected_headers = None
+        if "costos_Captación, selección y acompañamiento de usuarias" in flat_data:
+            expected_headers = MINIMUM_HEADERS_BY_SECTION.get("costs_blh__", [])
+        elif sheet_name in MINIMUM_HEADERS_BY_SECTION:
+            expected_headers = MINIMUM_HEADERS_BY_SECTION[sheet_name]
+        else:
+            expected_headers = list(flat_data.keys())
+
+        headers = _ensure_headers(sheet, expected_headers)
+        if not headers:
+            st.error(f"❌ No se pudieron establecer encabezados para la hoja '{sheet_name}'.")
+            return False
+
+        # Serializa los valores
+        def _serialize_value(val):
+            if isinstance(val, (dict, list)):
+                return str(val)
+            if val is None:
+                return ""
+            return str(val)
+
+        # Ordena la fila de acuerdo al header
+        full_row = [_serialize_value(flat_data.get(col, "")) for col in headers]
         existing_rows = sheet.get_all_records()
 
-        # Agregar nuevas columnas si es necesario
-        missing_headers = [key for key in flat_data if key not in headers]
-        if missing_headers:
-            headers += missing_headers
-            sheet.resize(rows=sheet.row_count, cols=len(headers))
-            sheet.update("A1", [headers])
-
-        # Construir fila ordenada
-        full_row = [flat_data.get(col, "") for col in headers]
-
-        # Verificar si ya existe IPS
         for idx, row in enumerate(existing_rows):
-            existing_id = str(row.get("identificacion__ips_id", "")).strip().lower()
-            if existing_id == ips_id:
+            if str(row.get("ips_id", "")).strip().lower() == ips_id:
                 sheet.update(f"A{idx + 2}", [full_row])
-                _save_local_backup(flat_data, headers)
                 return True
 
-        # Si no existe, agregar nueva fila
         sheet.append_row(full_row, value_input_option="USER_ENTERED")
-        _save_local_backup(flat_data, headers)
         return True
 
     except Exception as e:
-        st.error("❌ Error al guardar los datos en Google Sheets.")
+        st.error(f"❌ Error al guardar los datos en la hoja '{sheet_name}'.")
         st.exception(e)
         return False
 
 # ──────────────────────────────────────────────
-# 3️⃣ Guardar copia local en CSV (respaldo)
+# 💾 Guarda los datos de una sección a partir de un prefijo en session_state
 # ──────────────────────────────────────────────
-def _save_local_backup(flat_data, headers):
+def save_section_to_sheet_by_prefix(id_field: str, sheet_name: str, section_prefix: str) -> bool:
     """
-    Guarda una copia local en CSV, actualizando si ya existe la IPS.
+    Extrae los datos de session_state que empiezan por section_prefix y los guarda en la hoja correspondiente.
     """
+    if not section_prefix.endswith("__"):
+        section_prefix += "__"
+
+    # Recoge los datos SIN prefijo
+    section_data = {
+        k[len(section_prefix):]: v
+        for k, v in st.session_state.items()
+        if k.startswith(section_prefix) and v not in (None, "", [], {})
+    }
+
+    # Valida headers mínimos obligatorios (si están definidos)
+    required_keys = MINIMUM_HEADERS_BY_SECTION.get(section_prefix, [])
+    missing = [
+        k for k in required_keys 
+        if not str(section_data.get(k, "") if section_data.get(k, "") is not None else "").strip()
+    ]
+    if missing:
+        st.warning(f"⚠️ Faltan campos obligatorios en '{section_prefix}': {', '.join(missing)}")
+        return False
+
+    section_data["ips_id"] = id_field.strip()
+    # Limpieza: elimina cualquier clave residual con doble guión bajo
+    keys_to_remove = [k for k in section_data.keys() if "__" in k]
+    for k in keys_to_remove:
+        section_data.pop(k)
+
+    return append_or_update_row(section_data, sheet_name=sheet_name)
+
+# Alias simple para el guardado principal
+save_section_to_sheet = save_section_to_sheet_by_prefix
+
+# Guardado seguro con manejo de excepciones amigable
+def safe_save_section(id_field: str, sheet_name: str, section_prefix: str) -> bool:
     try:
-        try:
-            existing_df = pd.read_csv(MASTER_CSV, dtype=str)
-        except FileNotFoundError:
-            existing_df = pd.DataFrame(columns=headers)
+        return save_section_to_sheet(id_field, sheet_name, section_prefix)
+    except Exception as e:
+        st.warning(f"⚠️ Error inesperado guardando sección '{section_prefix}'.")
+        st.exception(e)
+        return False
 
-        ips_id = str(flat_data.get("identificacion__ips_id", "")).strip().lower()
-        if not ips_id:
-            return
 
-        if "identificacion__ips_id" not in existing_df.columns:
-            existing_df["identificacion__ips_id"] = ""
+def batch_append_or_update_rows(list_of_dicts, sheet_name):
+    try:
+        sheet = get_worksheet(sheet_name=sheet_name)
 
-        existing_df["identificacion__ips_id"] = (
-            existing_df["identificacion__ips_id"]
-            .fillna("").astype(str).str.lower()
-        )
-        match_idx = existing_df[existing_df["identificacion__ips_id"] == ips_id].index
+        if not list_of_dicts:
+            st.warning("No hay datos para guardar.")
+            return True  # No hay datos, no es un error
 
-        # Preparar fila nueva como string
-        new_row = {col: str(flat_data.get(col, "")) for col in headers}
+        # Extraer y validar encabezados
+        headers_sheet = sheet.row_values(1)
+        headers_dict = list_of_dicts[0].keys()
 
-        prev_nombre = str(existing_df.loc[match_idx[0]].get("identificacion__nombre_responsable", "")).strip() if not match_idx.empty else ""
-        nuevo_nombre = str(new_row.get("identificacion__nombre_responsable", "")).strip()
+        # Si la hoja está vacía, establece encabezados
+        if not headers_sheet:
+            sheet.resize(rows=1000, cols=len(headers_dict))
+            sheet.update("A1", [list(headers_dict)])
+            headers_sheet = list(headers_dict)
 
-        if prev_nombre and nuevo_nombre and prev_nombre != nuevo_nombre:
-            st.warning(f"⚠️ Se detectó un cambio de responsable para esta IPS:\n- Antes: **{prev_nombre}**\n- Ahora: **{nuevo_nombre}**")
+        # Añade encabezados faltantes
+        missing_headers = [h for h in headers_dict if h not in headers_sheet]
+        if missing_headers:
+            headers_sheet += missing_headers
+            sheet.update("A1", [headers_sheet])
 
-        if not match_idx.empty:
-            for col in headers:
-                existing_df.at[match_idx[0], col] = new_row[col]
-        else:
-            new_row_df = pd.DataFrame([new_row])
-            existing_df = pd.concat([existing_df, new_row_df], ignore_index=True)
+        # Serialización segura y en orden
+        full_rows = []
+        for data_dict in list_of_dicts:
+            full_rows.append([str(data_dict.get(col, "")) for col in headers_sheet])
 
-        # Asegurar orden y columnas completas
-        for col in headers:
-            if col not in existing_df.columns:
-                existing_df[col] = ""
-        existing_df = existing_df[headers]
+        # Aquí está la solución eficiente
+        sheet.append_rows(full_rows, value_input_option="USER_ENTERED")
 
-        existing_df.to_csv(MASTER_CSV, index=False)
+        return True
 
     except Exception as e:
-        st.warning("⚠️ Error al guardar la copia local en CSV.")
+        st.error(f"❌ Error al guardar datos (batch) en la hoja '{sheet_name}'.")
         st.exception(e)
+        return False
+

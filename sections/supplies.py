@@ -1,6 +1,6 @@
 import streamlit as st
-from utils.state_manager import flatten_session_state
-from utils.sheet_io import append_or_update_row
+from utils.state_manager import flatten_session_state, get_current_ips_id
+from utils.sheet_io import batch_append_or_update_rows
 from utils.ui_styles import render_info_box, render_compact_example_box
 
 # 🔐 Conversión segura
@@ -10,13 +10,9 @@ def safe_float(value, default=0.0):
     except (ValueError, TypeError):
         return default
 
-
 def render():
     st.header("7. 💊 Insumos del Banco de Leche Humana (Pregunta 21)")
 
-    # ──────────────────────────────────────────────
-    # Instrucciones Oficiales
-    # ──────────────────────────────────────────────
     st.markdown(render_info_box("""
 **ℹ️ ¿Qué información debe registrar?**  
 Registre los **insumos utilizados mensualmente** por el BLH. Para cada uno indique:
@@ -75,21 +71,19 @@ Si no aplica, registre **0**. Puede usar la categoría **"Otros"** para registra
 
     insumos_data = {}
 
+    # Render dinámico: Inputs por proceso e insumo
     for proceso, insumos in procesos_insumos.items():
         with st.expander(f"🔹 {proceso}"):
             proceso_data = prev_data.get(proceso, {})
-
             for insumo in insumos:
                 prev = proceso_data.get(insumo, {})
                 col1, col2, col3 = st.columns([2, 2, 2])
-
                 with col1:
                     unidad = st.text_input(
                         f"Unidad de medida - {insumo}",
                         value=prev.get("unidad", ""),
                         key=f"{prefix}_{proceso}_{insumo}_unidad"
                     )
-
                 with col2:
                     cantidad = st.number_input(
                         f"Cantidad mensual - {insumo}",
@@ -98,7 +92,6 @@ Si no aplica, registre **0**. Puede usar la categoría **"Otros"** para registra
                         value=safe_float(prev.get("cantidad", 0.0)),
                         key=f"{prefix}_{proceso}_{insumo}_cantidad"
                     )
-
                 with col3:
                     costo = st.number_input(
                         f"Costo por unidad (COP) - {insumo}",
@@ -107,17 +100,13 @@ Si no aplica, registre **0**. Puede usar la categoría **"Otros"** para registra
                         value=safe_float(prev.get("costo", 0.0)),
                         key=f"{prefix}_{proceso}_{insumo}_costo"
                     )
-
                 insumos_data.setdefault(proceso, {})[insumo] = {
                     "unidad": unidad.strip(),
                     "cantidad": cantidad,
                     "costo": costo
                 }
 
-    # ──────────────────────────────────────────────
-    # Validación de Completitud segura
-    # ──────────────────────────────────────────────
-
+    # Validación de Completitud
     def is_positive(value):
         try:
             return float(value) > 0
@@ -130,15 +119,35 @@ Si no aplica, registre **0**. Puede usar la categoría **"Otros"** para registra
     )
     st.session_state[completion_flag] = is_complete
 
-    # ──────────────────────────────────────────────
-    # Guardado
-    # ──────────────────────────────────────────────
-
+    # Guardado en hoja específica "7_insumos" (¡con batch!)
     if st.button("💾 Guardar sección - Insumos (Pregunta 21)"):
         st.session_state[prefix + "data"] = insumos_data
 
-        flat_data = flatten_session_state(st.session_state)
-        success = append_or_update_row(flat_data)
+        id_ips = get_current_ips_id(st.session_state)
+        if not id_ips:
+            st.error("❌ No se encontró el identificador único de la IPS. Complete primero la sección de Identificación.")
+            return
+
+        # Estructura filas planas por insumo
+        filas_insumos = []
+        for proceso, insumos in insumos_data.items():
+            for insumo, data in insumos.items():
+                fila = {
+                    "ips_id": id_ips,
+                    "proceso": proceso,
+                    "insumo": insumo,
+                    "unidad": data.get("unidad", ""),
+                    "cantidad": data.get("cantidad", 0),
+                    "costo": data.get("costo", 0)
+                }
+                filas_insumos.append(fila)
+
+        # Solo guarda si hay algún insumo registrado
+        if not filas_insumos:
+            st.warning("Debe ingresar al menos un insumo para guardar.")
+            return
+
+        success = batch_append_or_update_rows(filas_insumos, sheet_name="Insumos")
 
         if success:
             st.success("✅ Datos de insumos guardados correctamente.")
@@ -148,3 +157,4 @@ Si no aplica, registre **0**. Puede usar la categoría **"Otros"** para registra
                 st.rerun()
         else:
             st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
+
