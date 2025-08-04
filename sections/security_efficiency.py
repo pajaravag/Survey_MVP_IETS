@@ -1,5 +1,5 @@
 import streamlit as st
-from utils.state_manager import flatten_session_state
+from utils.state_manager import flatten_session_state, get_current_ips_id, get_current_ips_nombre
 from utils.sheet_io import safe_save_section, load_existing_data
 from utils.ui_styles import render_info_box, render_compact_example_box
 from utils.constants import MINIMUM_HEADERS_BY_SECTION
@@ -30,6 +30,15 @@ def safe_radio_index(options, value, fallback="No"):
 def render():
     st.header("4. 🔐 Seguridad y Eficiencia del Banco de Leche Humana (Preguntas 11 a 16)")
 
+    # Mostrar nombre oficial de la IPS validada
+    nombre_inst_oficial = get_current_ips_nombre()
+    st.text_input(
+        "🏥 Nombre completo y oficial de la institución:",
+        value=nombre_inst_oficial,
+        key=SECTION_PREFIX + "nombre_inst",
+        disabled=True
+    )
+
     # ──────────────────────────────────────────────
     # Introducción
     # ──────────────────────────────────────────────
@@ -51,7 +60,7 @@ Para los volúmenes con decimales, utilice una **coma** como separador decimal (
 
     # Estado y precarga segura
     data_loaded = st.session_state.get(DATA_LOADED_KEY, False)
-    id_field = st.session_state.get("identificacion", {}).get("ips_id", "")
+    id_field = get_current_ips_id()  # Getter robusto
 
     def safe_get(field):
         val = st.session_state.get(f"{SECTION_PREFIX}{field}", "")
@@ -159,4 +168,3 @@ Para los volúmenes con decimales, utilice una **coma** como separador decimal (
                 st.rerun()
             else:
                 st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
-

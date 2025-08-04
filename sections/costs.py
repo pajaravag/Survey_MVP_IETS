@@ -1,5 +1,5 @@
 import streamlit as st
-from utils.state_manager import flatten_session_state, get_current_ips_id
+from utils.state_manager import flatten_session_state, get_current_ips_id, get_current_ips_nombre
 from utils.sheet_io import safe_save_section, load_existing_data
 from utils.ui_styles import render_info_box, render_compact_example_box
 from utils.constants import MINIMUM_HEADERS_BY_SECTION
@@ -31,9 +31,6 @@ def format_cop(value):
         return "NA"
 
 def flat_costs_dict(costos, actividades, id_field, is_complete):
-    """
-    Devuelve un dict plano alineado con los encabezados requeridos.
-    """
     flat = {"ips_id": id_field}
     for proceso in PROCESOS_BLH:
         flat[f"costos_{proceso}"] = costos.get(proceso, 0)
@@ -43,6 +40,17 @@ def flat_costs_dict(costos, actividades, id_field, is_complete):
 
 def render():
     st.header("5. 💸 Costos por Proceso del Banco de Leche Humana (Preguntas 17 y 18)")
+
+    # Nombre oficial IPS
+    nombre_inst_oficial = get_current_ips_nombre()
+    nombre_key = SECTION_PREFIX + "nombre_inst"
+    if nombre_key not in st.session_state:
+        st.session_state[nombre_key] = nombre_inst_oficial or ""
+    st.text_input(
+        "🏥 Nombre completo y oficial de la institución:",
+        key=nombre_key,
+        disabled=True
+    )
 
     st.markdown(render_info_box("""
 **ℹ️ ¿Qué debe registrar?**  
@@ -63,34 +71,32 @@ Esta sección solicita el **costo mensual estimado** y las **actividades realiza
 | Distribución                         | 600.000             | Embalaje, entrega en servicios hospitalarios, registro de entrega|
 """), unsafe_allow_html=True)
 
-    # --- Precarga de datos si aplica ---
+    # Precarga
     data_loaded = st.session_state.get(DATA_LOADED_KEY, False)
-    id_field = get_current_ips_id(st.session_state)
+    id_field = get_current_ips_id()
 
-    def safe_get_dict(key):
-        val = st.session_state.get(key, {})
-        return val if isinstance(val, dict) else {}
+    # Inicialización previa de session_state para evitar warnings
+    for i, proceso in enumerate(PROCESOS_BLH):
+        costo_key = f"{SECTION_PREFIX}costo_{i}"
+        actividad_key = f"{SECTION_PREFIX}actividad_{i}"
+        if costo_key not in st.session_state:
+            st.session_state[costo_key] = 0.0
+        if actividad_key not in st.session_state:
+            st.session_state[actividad_key] = ""
 
-    prev_costos = safe_get_dict(SECTION_PREFIX + "costos")
-    prev_actividades = safe_get_dict(SECTION_PREFIX + "actividades")
-
-    # Si hay datos previos en Google Sheets, precarga solo 1 vez
+    # Precarga desde Google Sheets (solo una vez por sesión)
     if id_field and not data_loaded:
         loaded_data = load_existing_data(id_field, sheet_name=SHEET_NAME)
         if loaded_data:
-            costos_recuperados = {}
-            actividades_recuperadas = {}
-            for proceso in PROCESOS_BLH:
+            for i, proceso in enumerate(PROCESOS_BLH):
                 k_costo = f"costos_{proceso}"
                 k_act = f"actividades_{proceso}"
+                costo_key = f"{SECTION_PREFIX}costo_{i}"
+                actividad_key = f"{SECTION_PREFIX}actividad_{i}"
                 if k_costo in loaded_data:
-                    costos_recuperados[proceso] = loaded_data[k_costo]
+                    st.session_state[costo_key] = float(loaded_data[k_costo])
                 if k_act in loaded_data:
-                    actividades_recuperadas[proceso] = loaded_data[k_act]
-            if costos_recuperados:
-                st.session_state[SECTION_PREFIX + "costos"] = costos_recuperados
-            if actividades_recuperadas:
-                st.session_state[SECTION_PREFIX + "actividades"] = actividades_recuperadas
+                    st.session_state[actividad_key] = loaded_data[k_act]
             st.session_state[DATA_LOADED_KEY] = True
             st.rerun()
 
@@ -104,18 +110,18 @@ Esta sección solicita el **costo mensual estimado** y las **actividades realiza
             with col1:
                 st.markdown(f"**{proceso}**")
             with col2:
+                costo_key = f"{SECTION_PREFIX}costo_{i}"
                 costo = st.number_input(
                     f"Costo mensual (COP) - {proceso}",
                     min_value=0.0,
                     step=1000.0,
-                    value=float(prev_costos.get(proceso, 0.0)),
-                    key=f"{SECTION_PREFIX}costo_{i}"
+                    key=costo_key
                 )
             with col3:
+                actividad_key = f"{SECTION_PREFIX}actividad_{i}"
                 actividad = st.text_input(
                     f"Actividades realizadas (o escriba 'NA') - {proceso}",
-                    value=prev_actividades.get(proceso, ""),
-                    key=f"{SECTION_PREFIX}actividad_{i}"
+                    key=actividad_key
                 )
             costos_data[proceso] = costo
             actividades_data[proceso] = actividad.strip() or "NA"
@@ -127,8 +133,7 @@ Esta sección solicita el **costo mensual estimado** y las **actividades realiza
         submitted = st.form_submit_button("💾 Guardar sección - Costos por Proceso")
 
     if submitted:
-        # Obtener ips_id de forma robusta
-        id_field = get_current_ips_id(st.session_state)
+        id_field = get_current_ips_id()
         if not id_field:
             st.error("❌ No se encontró el identificador de la IPS. Complete primero la sección de Identificación y asegúrese de no refrescar la página.")
             return
@@ -138,24 +143,15 @@ Esta sección solicita el **costo mensual estimado** y las **actividades realiza
         st.session_state[SECTION_PREFIX + "actividades"] = actividades_data
         st.session_state[COMPLETION_KEY] = is_complete
 
-        # --- Dict plano alineado con MINIMUM_HEADERS_BY_SECTION ---
         flat_data = flat_costs_dict(costos_data, actividades_data, id_field, is_complete)
 
-        # DEBUG: Visualiza en pantalla la info fundamental para diagnóstico
-        #st.write("DEBUG: id_field", id_field)
-        #st.write("DEBUG: flat_data", flat_data)
-        #st.write("DEBUG: expected headers", MINIMUM_HEADERS_BY_SECTION[SECTION_PREFIX])
-
-        # Añade explícitamente los campos requeridos si faltan (robustez máxima)
         for field in MINIMUM_HEADERS_BY_SECTION[SECTION_PREFIX]:
             if field not in flat_data:
                 flat_data[field] = ""
 
-        # Actualiza session_state plano para integridad modular
         for k, v in flat_data.items():
             st.session_state[f"{SECTION_PREFIX}{k}"] = v
 
-        # ----- Intento de guardado -----
         success = safe_save_section(
             id_field=id_field,
             section_prefix=SECTION_PREFIX,
@@ -171,11 +167,6 @@ Esta sección solicita el **costo mensual estimado** y las **actividades realiza
                 st.rerun()
         else:
             st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
-            # Dump para análisis
-            st.write("❌ ERROR al guardar")
-            st.write("DICT ENVIADO:", flat_data)
-            st.write("HEADERS ESPERADOS:", MINIMUM_HEADERS_BY_SECTION[SECTION_PREFIX])
-            st.write("IPS_ID:", id_field)
 
     if resumen_tabla:
         st.markdown("### 📋 Resumen de Costos y Actividades")

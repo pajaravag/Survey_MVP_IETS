@@ -1,6 +1,6 @@
 import streamlit as st
 from constants.infrastructure_schemma import EQUIPOS_INFRAESTRUCTURA, EQUIPOS_PASTEURIZACION
-from utils.state_manager import flatten_session_state, get_current_ips_id
+from utils.state_manager import flatten_session_state, get_current_ips_id, get_current_ips_nombre
 from utils.sheet_io import batch_append_or_update_rows
 from utils.ui_styles import render_info_box, render_compact_example_box
 from utils.forms.render_equipment_entry import render_equipment_entry_section, extract_flat_equipment_data
@@ -10,6 +10,15 @@ def render():
     prefix = "costos_equipos__"
     completion_flag = prefix + "completed"
     SHEET_EQUIPOS = "Costos_Equipos"  # <- Solo una hoja
+
+    # Mostrar nombre oficial de la IPS validada
+    nombre_inst_oficial = get_current_ips_nombre()
+    st.text_input(
+        "🏥 Nombre completo y oficial de la institución:",
+        value=nombre_inst_oficial,
+        key=prefix + "nombre_inst",
+        disabled=True
+    )
 
     st.markdown(render_info_box("""
 **ℹ️ ¿Qué debe registrar?**  
@@ -96,4 +105,3 @@ Si un equipo o proceso **no aplica**, registre **0** en los valores numéricos.
                 st.rerun()
         else:
             st.error("❌ Error al guardar datos en la hoja. Por favor intente nuevamente.")
-

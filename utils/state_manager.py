@@ -1,29 +1,17 @@
 import streamlit as st
+import json
 from datetime import datetime
 from typing import Callable, Optional, Tuple, List, Dict, Any
 from utils.constants import MINIMUM_HEADERS_BY_SECTION
+from utils.sheet_io import load_existing_data
 
 # ───────────────────────────────────────────────────────────────────────────────
 # 🔧 Aplanar el estado de sesión en un diccionario plano por prefijo
 # ───────────────────────────────────────────────────────────────────────────────
-
 def flatten_session_state(
     session_state: Optional[Dict[str, Any]] = None,
     prefix: Optional[str] = None
 ) -> Dict[str, Any]:
-    """
-    Extrae claves que comienzan con un prefijo y devuelve un dict plano
-    con las claves sin prefijo, solo si el valor es escalar (str/int/float/bool/None).
-
-    Args:
-        session_state (dict, optional): Estado de sesión a usar. Si no se proporciona,
-            se usa `st.session_state`.
-        prefix (str, optional): Prefijo con '__' al final. Si no se proporciona, retorna todo
-            el estado de sesión.
-
-    Returns:
-        dict: Diccionario plano sin el prefijo en las claves.
-    """
     session_state = session_state or st.session_state
 
     def is_scalar(val):
@@ -32,7 +20,6 @@ def flatten_session_state(
     if prefix:
         if not prefix.endswith("__"):
             prefix += "__"
-        # NO incluyas claves iguales al prefix (ej: "identificacion__")
         filtered = {
             k[len(prefix):]: v
             for k, v in session_state.items()
@@ -49,7 +36,6 @@ def flatten_session_state(
 # ───────────────────────────────────────────────────────────────────────────────
 # 🕒 Marcar el momento en que se inicia una sección del formulario
 # ───────────────────────────────────────────────────────────────────────────────
-
 def register_section_timestamp(prefix: str) -> None:
     if not prefix.endswith("__"):
         prefix += "__"
@@ -60,7 +46,6 @@ def register_section_timestamp(prefix: str) -> None:
 # ───────────────────────────────────────────────────────────────────────────────
 # 🧼 Extraer encabezados del estado de sesión por prefijo
 # ───────────────────────────────────────────────────────────────────────────────
-
 def extract_headers_from_session(prefix: str) -> List[str]:
     if not prefix.endswith("__"):
         prefix += "__"
@@ -72,23 +57,12 @@ def extract_headers_from_session(prefix: str) -> List[str]:
 # ───────────────────────────────────────────────────────────────────────────────
 # 💾 Guardado seguro de una sección del formulario
 # ───────────────────────────────────────────────────────────────────────────────
-
 def safe_save_section(
     section_prefix: str,
     id_field: str,
     sheet_name: str,
     save_func: Optional[Callable[[str, str, str], None]] = None
 ) -> None:
-    """
-    Registra la marca de tiempo y guarda la sección en una hoja de cálculo.
-
-    Args:
-        section_prefix (str): Prefijo que identifica los campos de la sección.
-        id_field (str): ID único del IPS o institución.
-        sheet_name (str): Nombre de la hoja de destino.
-        save_func (callable, optional): Función de guardado con firma
-            (section_prefix, id_field, sheet_name). Si no se especifica, usa la predeterminada.
-    """
     if not section_prefix.endswith("__"):
         section_prefix += "__"
 
@@ -108,7 +82,6 @@ def safe_save_section(
 # ───────────────────────────────────────────────────────────────────────────────
 # 📊 Progreso del formulario
 # ───────────────────────────────────────────────────────────────────────────────
-
 def compute_progress(
     session_state: Dict[str, Any],
     section_prefixes: List[str]
@@ -126,14 +99,39 @@ def compute_progress(
     progress = completed / len(section_prefixes)
     return completed, progress
 
+# ───────────────────────────────────────────────────────────────────────────────
+# 🆔 Manejo profesional de autenticación y carga de datos persistentes
+# ───────────────────────────────────────────────────────────────────────────────
+def validate_ips_id(ips_id: str, lookup_path: str = "data/ips_lookup.json") -> bool:
+    """Valida ips_id contra el archivo de lookup."""
+    try:
+        with open(lookup_path, 'r') as file:
+            ips_data = json.load(file)
+        return ips_id in ips_data
+    except FileNotFoundError:
+        st.error("❌ Archivo de lookup no encontrado.")
+        return False
 
-def get_current_ips_id(session_state):
-    """
-    Busca el identificador único de la IPS a lo largo de las posibles claves.
-    """
-    return (
-        session_state.get("identificacion__ips_id")
-        or session_state.get("intro__id_ips")
-        or session_state.get("identificacion", {}).get("ips_id")
-        or ""
-    ).strip()
+def load_persistent_data(ips_id: str) -> None:
+    """Carga los datos previos de todas las secciones si existe para la IPS."""
+    sections = MINIMUM_HEADERS_BY_SECTION.keys()
+    for prefix in sections:
+        data = load_existing_data(ips_id=ips_id, sheet_name=prefix.strip("__"))
+        if data:
+            for key, value in data.items():
+                st.session_state[f"{prefix}{key}"] = value
+
+def persist_valid_ips_info(ips_id: str, ips_nombre: str) -> None:
+    """Almacena ips_id y nombre de IPS de forma robusta para todas las secciones."""
+    st.session_state["ips_id_validado"] = ips_id
+    st.session_state["ips_nombre_validado"] = ips_nombre
+
+def get_current_ips_id(session_state=None):
+    """Obtiene el identificador único validado de forma persistente."""
+    session_state = session_state or st.session_state
+    return session_state.get("ips_id_validado", "").strip()
+
+def get_current_ips_nombre(session_state=None):
+    """Obtiene el nombre oficial de la IPS validado."""
+    session_state = session_state or st.session_state
+    return session_state.get("ips_nombre_validado", "").strip()

@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils.state_manager import flatten_session_state, get_current_ips_id
+from utils.state_manager import flatten_session_state, get_current_ips_id, get_current_ips_nombre
 from utils.sheet_io import append_or_update_row
 from utils.ui_styles import render_info_box, render_compact_example_box
 
@@ -10,6 +10,15 @@ def render():
     prefix = "personal_blh__"
     completion_flag = prefix + "completed"
     SHEET_NAME = "Personal"
+
+    # Mostrar nombre oficial de la IPS validada
+    nombre_inst_oficial = get_current_ips_nombre()
+    st.text_input(
+        "🏥 Nombre completo y oficial de la institución:",
+        value=nombre_inst_oficial,
+        key=prefix + "nombre_inst",
+        disabled=True
+    )
 
     st.markdown(render_info_box("""
 **ℹ️ ¿Qué información debe registrar?**  
@@ -116,4 +125,3 @@ Indique el número de personas asociadas a los roles priorizados en el BLH, el *
                 st.rerun()
         else:
             st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
-

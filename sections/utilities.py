@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-from utils.state_manager import flatten_session_state, get_current_ips_id
+from utils.state_manager import flatten_session_state, get_current_ips_id, get_current_ips_nombre
 from utils.sheet_io import append_or_update_row
 from utils.ui_styles import render_info_box, render_compact_example_box
 
@@ -17,6 +17,15 @@ def render():
     prefix = "servicios_publicos__"
     completion_flag = prefix + "completed"
     SHEET_NAME = "Servicios_Publicos"  # nombre corto y sin espacios
+
+    # Mostrar nombre oficial de la IPS validada
+    nombre_inst_oficial = get_current_ips_nombre()
+    st.text_input(
+        "🏥 Nombre completo y oficial de la institución:",
+        value=nombre_inst_oficial,
+        key=prefix + "nombre_inst",
+        disabled=True
+    )
 
     # Instrucciones
     st.markdown(render_info_box("""
@@ -101,4 +110,3 @@ Todos los valores deben estar expresados en **pesos colombianos (COP)**. Registr
                 st.rerun()
         else:
             st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
-

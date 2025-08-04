@@ -1,5 +1,5 @@
 import streamlit as st
-from utils.state_manager import flatten_session_state, get_current_ips_id
+from utils.state_manager import flatten_session_state, get_current_ips_id, get_current_ips_nombre
 from utils.sheet_io import batch_append_or_update_rows
 from utils.ui_styles import render_info_box, render_compact_example_box
 
@@ -12,6 +12,16 @@ def safe_float(value, default=0.0):
 
 def render():
     st.header("7. 💊 Insumos del Banco de Leche Humana (Pregunta 21)")
+
+    # Mostrar nombre oficial de la IPS validada
+    nombre_inst_oficial = get_current_ips_nombre()
+    prefix = "insumos_detalle__"
+    st.text_input(
+        "🏥 Nombre completo y oficial de la institución:",
+        value=nombre_inst_oficial,
+        key=prefix + "nombre_inst",
+        disabled=True
+    )
 
     st.markdown(render_info_box("""
 **ℹ️ ¿Qué información debe registrar?**  
@@ -34,7 +44,6 @@ Si no aplica, registre **0**. Puede usar la categoría **"Otros"** para registra
 | Microbiológico       | Alcohol 96°      | Litro   | 5        | 15,000         |
 """), unsafe_allow_html=True)
 
-    prefix = "insumos_detalle__"
     completion_flag = prefix + "completed"
     prev_data = st.session_state.get(prefix + "data", {})
 
@@ -157,4 +166,3 @@ Si no aplica, registre **0**. Puede usar la categoría **"Otros"** para registra
                 st.rerun()
         else:
             st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
-
