@@ -15,7 +15,7 @@ DATA_LOADED_KEY = SECTION_PREFIX + "data_loaded"
 
 RADIO_OPTIONS = ["Sí", "No"]
 
-# --------------------------- Helpers de conversión -----------------------------
+# --------------------------- Helpers ---------------------------
 
 def safe_int(value, default=0):
     try:
@@ -30,31 +30,25 @@ def safe_float(value, default=0.0):
         return default
 
 def _normalize_pasteuriza(val) -> str:
-    """Normaliza cualquier entrada (0/1/True/False/'si') a 'Sí'/'No'."""
     if isinstance(val, str):
         v = val.strip().lower()
-        if v in {"sí", "si", "true", "1"}:
-            return "Sí"
-        if v in {"no", "false", "0"}:
-            return "No"
-    if isinstance(val, (int, float)):
-        return "Sí" if int(val) == 1 else "No"
-    if isinstance(val, bool):
-        return "Sí" if val else "No"
+        if v in {"sí", "si", "true", "1"}: return "Sí"
+        if v in {"no", "false", "0"}:       return "No"
+    if isinstance(val, (int, float)):        return "Sí" if int(val) == 1 else "No"
+    if isinstance(val, bool)):               return "Sí" if val else "No"
     return "No"
 
-# ------------------------------- Render ---------------------------------------
+# ----------------------------- UI ------------------------------
 
 def render():
     st.header("3. 👩‍🍼 Donantes y Receptores del Banco de Leche Humana (Preguntas 5 a 10)")
 
-    # Bloqueo de navegación si no hay IPS
     ips_id = get_current_ips_id()
     if not ips_id:
         st.warning("⚠️ Debe completar la **Identificación de la IPS** antes de continuar.", icon="⚠️")
         st.stop()
 
-    # Nombre oficial de la IPS (solo lectura, sin 'value' + 'key' conflicto)
+    # Nombre oficial (solo lectura, sin conflicto value+key)
     nombre_key = SECTION_PREFIX + "nombre_inst"
     if nombre_key not in st.session_state:
         st.session_state[nombre_key] = get_current_ips_nombre() or ""
@@ -76,63 +70,51 @@ En caso de que algún ítem no aplique a su institución, deberá registrar el v
 - Volumen distribuido: 7.500 ml
     """), unsafe_allow_html=True)
 
-    # Claves y defaults seguros en session_state (sin pasar 'value' a widgets)
-    numeric_defaults = {
-        "donantes_mes": 0,
-        "vol_inst": 0.0,
-        "vol_dom": 0.0,
-        "vol_centros": 0.0,
-        "receptores_mes": 0,
-        "volumen_pasteurizada": 0.0,
-        "leche_distribuida": 0.0,
-    }
-    for field, default in numeric_defaults.items():
-        k = f"{SECTION_PREFIX}{field}"
-        if k not in st.session_state:
-            st.session_state[k] = default
+    # ----------- HIDRATACIÓN (primero) desde Google Sheets -----------
+    PASTEURIZA_VAL_KEY = SECTION_PREFIX + "pasteuriza"  # guardamos "Sí"/"No" aquí
 
-    PASTEURIZA_VAL_KEY = SECTION_PREFIX + "pasteuriza"  # siempre "Sí"/"No"
-    if PASTEURIZA_VAL_KEY not in st.session_state:
-        st.session_state[PASTEURIZA_VAL_KEY] = "No"
-
-    # Precarga desde Sheets (una sola vez) con conversión de tipos
     if not st.session_state.get(DATA_LOADED_KEY, False):
-        loaded = load_existing_data(ips_id, sheet_name=SHEET_NAME)
-        if loaded:
-            # numéricos
-            for field, cast in {
-                "donantes_mes": safe_int,
-                "vol_inst": safe_float,
-                "vol_dom": safe_float,
-                "vol_centros": safe_float,
-                "receptores_mes": safe_int,
-                "volumen_pasteurizada": safe_float,
-                "leche_distribuida": safe_float,
-            }.items():
-                k_sheet = field
-                k_state = f"{SECTION_PREFIX}{field}"
-                if k_sheet in loaded and k_state not in st.session_state:
-                    st.session_state[k_state] = cast(loaded[k_sheet])
+        loaded = load_existing_data(ips_id, sheet_name=SHEET_NAME) or {}
 
-            # pasteuriza (texto)
-            st.session_state[PASTEURIZA_VAL_KEY] = _normalize_pasteuriza(loaded.get("pasteuriza", "No"))
+        # Sobreescribe SIEMPRE en la primera hidratación (tras refresh)
+        st.session_state[f"{SECTION_PREFIX}donantes_mes"]        = safe_int(loaded.get("donantes_mes",        st.session_state.get(f"{SECTION_PREFIX}donantes_mes",        0)))
+        st.session_state[f"{SECTION_PREFIX}vol_inst"]            = safe_float(loaded.get("vol_inst",          st.session_state.get(f"{SECTION_PREFIX}vol_inst",            0.0)))
+        st.session_state[f"{SECTION_PREFIX}vol_dom"]             = safe_float(loaded.get("vol_dom",           st.session_state.get(f"{SECTION_PREFIX}vol_dom",             0.0)))
+        st.session_state[f"{SECTION_PREFIX}vol_centros"]         = safe_float(loaded.get("vol_centros",       st.session_state.get(f"{SECTION_PREFIX}vol_centros",         0.0)))
+        st.session_state[f"{SECTION_PREFIX}receptores_mes"]      = safe_int(  loaded.get("receptores_mes",    st.session_state.get(f"{SECTION_PREFIX}receptores_mes",      0)))
+        st.session_state[f"{SECTION_PREFIX}volumen_pasteurizada"]= safe_float(loaded.get("volumen_pasteurizada", st.session_state.get(f"{SECTION_PREFIX}volumen_pasteurizada", 0.0)))
+        st.session_state[f"{SECTION_PREFIX}leche_distribuida"]   = safe_float(loaded.get("leche_distribuida", st.session_state.get(f"{SECTION_PREFIX}leche_distribuida",   0.0)))
+        st.session_state[PASTEURIZA_VAL_KEY] = _normalize_pasteuriza(loaded.get("pasteuriza", st.session_state.get(PASTEURIZA_VAL_KEY, "No")))
 
         st.session_state[DATA_LOADED_KEY] = True
         st.rerun()
 
-    # Radio SIN key (evita conflictos con session_state); usamos índice calculado
+    # ----------- Defaults de respaldo (solo si faltara algo) ----------
+    for key, default in {
+        f"{SECTION_PREFIX}donantes_mes": 0,
+        f"{SECTION_PREFIX}vol_inst": 0.0,
+        f"{SECTION_PREFIX}vol_dom": 0.0,
+        f"{SECTION_PREFIX}vol_centros": 0.0,
+        f"{SECTION_PREFIX}receptores_mes": 0,
+        f"{SECTION_PREFIX}volumen_pasteurizada": 0.0,
+        f"{SECTION_PREFIX}leche_distribuida": 0.0,
+    }.items():
+        st.session_state.setdefault(key, default)
+    st.session_state.setdefault(PASTEURIZA_VAL_KEY, "No")
+
+    # ----------- Radio SIN key (evita conflictos) ---------------------
     st.subheader("8️⃣ ¿En su institución se realiza pasteurización de la leche humana?")
-    current_radio_val = st.session_state[PASTEURIZA_VAL_KEY]
-    idx = RADIO_OPTIONS.index(current_radio_val) if current_radio_val in RADIO_OPTIONS else 1
-    sel_radio = st.radio(
+    idx = RADIO_OPTIONS.index(st.session_state[PASTEURIZA_VAL_KEY]) \
+        if st.session_state[PASTEURIZA_VAL_KEY] in RADIO_OPTIONS else 1
+    sel = st.radio(
         "Por favor confirme si este proceso se lleva a cabo:",
         options=RADIO_OPTIONS,
         index=idx,
         horizontal=True,
     )
-    st.session_state[PASTEURIZA_VAL_KEY] = sel_radio  # persistimos "Sí"/"No"
+    st.session_state[PASTEURIZA_VAL_KEY] = sel  # persistir "Sí"/"No"
 
-    # ----------------------- Formulario principal -----------------------
+    # ------------------------- Formulario ------------------------------
     with st.form("donantes_form"):
         st.subheader("5️⃣ Número promedio de donantes activas por mes:")
         st.number_input("Número promedio mensual de donantes activas:", min_value=0,
@@ -149,8 +131,8 @@ En caso de que algún ítem no aplique a su institución, deberá registrar el v
         st.number_input("Centros externos a la institución (ml):", min_value=0.0,
                         key=f"{SECTION_PREFIX}vol_centros", step=1.0)
 
-        inst_ml = float(st.session_state[f"{SECTION_PREFIX}vol_inst"])
-        dom_ml = float(st.session_state[f"{SECTION_PREFIX}vol_dom"])
+        inst_ml    = float(st.session_state[f"{SECTION_PREFIX}vol_inst"])
+        dom_ml     = float(st.session_state[f"{SECTION_PREFIX}vol_dom"])
         centros_ml = float(st.session_state[f"{SECTION_PREFIX}vol_centros"])
         total_volumen = inst_ml + dom_ml + centros_ml
         st.info(f"🔢 Volumen total recolectado: **{total_volumen:,.1f} ml**")
@@ -177,43 +159,34 @@ En caso de que algún ítem no aplique a su institución, deberá registrar el v
 
         submitted = st.form_submit_button("💾 Guardar sección - Donantes y Receptores")
 
-    # ----------------------------- Guardado -----------------------------
+    # --------------------------- Guardado ------------------------------
     if submitted:
         errores = []
-        donantes_mes = safe_int(st.session_state[f"{SECTION_PREFIX}donantes_mes"])
+        donantes_mes   = safe_int(st.session_state[f"{SECTION_PREFIX}donantes_mes"])
         receptores_mes = safe_int(st.session_state[f"{SECTION_PREFIX}receptores_mes"])
-
-        if donantes_mes < 0:
-            errores.append("- El número de donantes activas debe ser 0 o mayor.")
-        if total_volumen < 0:
-            errores.append("- El volumen recolectado no puede ser negativo.")
-        if receptores_mes < 0:
-            errores.append("- El número de receptores debe ser 0 o mayor.")
+        if donantes_mes < 0: errores.append("- El número de donantes activas debe ser 0 o mayor.")
+        if total_volumen < 0: errores.append("- El volumen recolectado no puede ser negativo.")
+        if receptores_mes < 0: errores.append("- El número de receptores debe ser 0 o mayor.")
         if st.session_state[PASTEURIZA_VAL_KEY] == "Sí" and volumen_pasteurizada_ml < 0:
             errores.append("- El volumen de leche pasteurizada debe ser 0 o mayor.")
         if leche_distribuida_ml < 0:
             errores.append("- El volumen de leche distribuida debe ser 0 o mayor.")
 
-        # Requisitos mínimos por constants.py
         campos_requeridos = MINIMUM_HEADERS_BY_SECTION.get(SECTION_PREFIX, [])
         flat_data = flatten_session_state(prefix=SECTION_PREFIX)
-        for campo in campos_requeridos:
-            if flat_data.get(campo) in [None, "", [], {}]:
-                errores.append(f"- `{campo}` es obligatorio.")
+        for c in campos_requeridos:
+            if flat_data.get(c) in [None, "", [], {}]:
+                errores.append(f"- `{c}` es obligatorio.")
 
         if errores:
             st.warning("⚠️ Por favor corrija los siguientes errores:")
-            for err in errores:
-                st.markdown(err)
+            for e in errores: st.markdown(e)
         else:
-            ok = safe_save_section(
-                id_field=ips_id,
-                section_prefix=SECTION_PREFIX,
-                sheet_name=SHEET_NAME
-            )
+            ok = safe_save_section(id_field=ips_id, section_prefix=SECTION_PREFIX, sheet_name=SHEET_NAME)
             if ok:
                 st.success("✅ Datos de Donantes y Receptores guardados correctamente.")
                 st.session_state[COMPLETION_KEY] = True
+                # Forzamos re-hidratación la próxima vez que entres a la sección
                 st.session_state[DATA_LOADED_KEY] = False
                 st.session_state.section_index += 1
                 st.rerun()
