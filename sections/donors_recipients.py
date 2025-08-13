@@ -76,7 +76,7 @@ En caso de que algún ítem no aplique a su institución, deberá registrar el v
 - Volumen distribuido: 7.500 ml
     """), unsafe_allow_html=True)
 
-    # Claves y defaults seguros en session_state (sin pasar 'value' a widgets)
+    # Claves numéricas en session_state (sin pasar 'value' a widgets)
     numeric_defaults = {
         "donantes_mes": 0,
         "vol_inst": 0.0,
@@ -91,32 +91,24 @@ En caso de que algún ítem no aplique a su institución, deberá registrar el v
         if k not in st.session_state:
             st.session_state[k] = default
 
-    PASTEURIZA_VAL_KEY = SECTION_PREFIX + "pasteuriza"  # siempre "Sí"/"No"
+    # Valor textual para el radio (siempre "Sí"/"No")
+    PASTEURIZA_VAL_KEY = SECTION_PREFIX + "pasteuriza"
     if PASTEURIZA_VAL_KEY not in st.session_state:
         st.session_state[PASTEURIZA_VAL_KEY] = "No"
 
-    # Precarga desde Sheets (una sola vez) con conversión de tipos
+    # Precarga desde Sheets (una sola vez) con conversión de tipos — SOBREESCRIBE en la 1ª carga
     if not st.session_state.get(DATA_LOADED_KEY, False):
-        loaded = load_existing_data(ips_id, sheet_name=SHEET_NAME)
-        if loaded:
-            # numéricos
-            for field, cast in {
-                "donantes_mes": safe_int,
-                "vol_inst": safe_float,
-                "vol_dom": safe_float,
-                "vol_centros": safe_float,
-                "receptores_mes": safe_int,
-                "volumen_pasteurizada": safe_float,
-                "leche_distribuida": safe_float,
-            }.items():
-                k_sheet = field
-                k_state = f"{SECTION_PREFIX}{field}"
-                if k_sheet in loaded and k_state not in st.session_state:
-                    st.session_state[k_state] = cast(loaded[k_sheet])
-
-            # pasteuriza (texto)
-            st.session_state[PASTEURIZA_VAL_KEY] = _normalize_pasteuriza(loaded.get("pasteuriza", "No"))
-
+        loaded = load_existing_data(ips_id, sheet_name=SHEET_NAME) or {}
+        # numéricos
+        st.session_state[f"{SECTION_PREFIX}donantes_mes"]         = safe_int(  loaded.get("donantes_mes",         st.session_state[f"{SECTION_PREFIX}donantes_mes"]))
+        st.session_state[f"{SECTION_PREFIX}vol_inst"]             = safe_float(loaded.get("vol_inst",             st.session_state[f"{SECTION_PREFIX}vol_inst"]))
+        st.session_state[f"{SECTION_PREFIX}vol_dom"]              = safe_float(loaded.get("vol_dom",              st.session_state[f"{SECTION_PREFIX}vol_dom"]))
+        st.session_state[f"{SECTION_PREFIX}vol_centros"]          = safe_float(loaded.get("vol_centros",          st.session_state[f"{SECTION_PREFIX}vol_centros"]))
+        st.session_state[f"{SECTION_PREFIX}receptores_mes"]       = safe_int(  loaded.get("receptores_mes",       st.session_state[f"{SECTION_PREFIX}receptores_mes"]))
+        st.session_state[f"{SECTION_PREFIX}volumen_pasteurizada"] = safe_float(loaded.get("volumen_pasteurizada", st.session_state[f"{SECTION_PREFIX}volumen_pasteurizada"]))
+        st.session_state[f"{SECTION_PREFIX}leche_distribuida"]    = safe_float(loaded.get("leche_distribuida",    st.session_state[f"{SECTION_PREFIX}leche_distribuida"]))
+        # radio
+        st.session_state[PASTEURIZA_VAL_KEY] = _normalize_pasteuriza(loaded.get("pasteuriza", st.session_state[PASTEURIZA_VAL_KEY]))
         st.session_state[DATA_LOADED_KEY] = True
         st.rerun()
 
@@ -214,8 +206,10 @@ En caso de que algún ítem no aplique a su institución, deberá registrar el v
             if ok:
                 st.success("✅ Datos de Donantes y Receptores guardados correctamente.")
                 st.session_state[COMPLETION_KEY] = True
+                # Forzamos re-hidratación la próxima vez que entres a la sección
                 st.session_state[DATA_LOADED_KEY] = False
-                st.session_state.section_index += 1
+                if "section_index" in st.session_state:
+                    st.session_state.section_index += 1
                 st.rerun()
             else:
                 st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
