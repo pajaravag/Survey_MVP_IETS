@@ -1,5 +1,6 @@
+import re
 import streamlit as st
-from utils.state_manager import flatten_session_state, get_current_ips_id, get_current_ips_nombre
+from utils.state_manager import get_current_ips_id, get_current_ips_nombre
 from utils.sheet_io import safe_save_section, load_existing_data
 from utils.ui_styles import render_info_box, render_compact_example_box
 from utils.constants import MINIMUM_HEADERS_BY_SECTION
@@ -21,8 +22,39 @@ PROCESOS_BLH = [
     "Pasteurización",
     "Control microbiológico",
     "Distribución",
-    "Seguimiento y trazabilidad"
+    "Seguimiento y trazabilidad",
 ]
+
+def _money_to_float(v) -> float:
+    """Convierte valores con separadores/locales a float de forma robusta."""
+    if v is None:
+        return 0.0
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip()
+    if not s or s.upper() == "NA":
+        return 0.0
+    # Solo deja dígitos, coma, punto y signo
+    s = re.sub(r"[^\d,.\-]", "", s)
+    # Si hay coma y punto, asumimos formato europeo: 1.234,56 -> 1234.56
+    if "," in s and "." in s:
+        s = s.replace(".", "").replace(",", ".")
+    else:
+        # Si solo hay coma, trátala como decimal
+        if "," in s:
+            s = s.replace(",", ".")
+        # Si solo hay puntos, ya está OK (o eran miles pero no hay decimales)
+    try:
+        return float(s)
+    except ValueError:
+        return 0.0
+
+def _to_str(v) -> str:
+    if v is None:
+        return ""
+    if isinstance(v, (list, dict)):
+        return ", ".join(map(str, v))
+    return str(v)
 
 def format_cop(value):
     try:
@@ -41,16 +73,12 @@ def flat_costs_dict(costos, actividades, id_field, is_complete):
 def render():
     st.header("5. 💸 Costos por Proceso del Banco de Leche Humana (Preguntas 17 y 18)")
 
-    # Nombre oficial IPS
+    # Nombre oficial IPS (solo lectura)
     nombre_inst_oficial = get_current_ips_nombre()
     nombre_key = SECTION_PREFIX + "nombre_inst"
     if nombre_key not in st.session_state:
         st.session_state[nombre_key] = nombre_inst_oficial or ""
-    st.text_input(
-        "🏥 Nombre completo y oficial de la institución:",
-        key=nombre_key,
-        disabled=True
-    )
+    st.text_input("🏥 Nombre completo y oficial de la institución:", key=nombre_key, disabled=True)
 
     st.markdown(render_info_box("""
 **ℹ️ ¿Qué debe registrar?**  
@@ -75,8 +103,8 @@ Esta sección solicita el **costo mensual estimado** y las **actividades realiza
     data_loaded = st.session_state.get(DATA_LOADED_KEY, False)
     id_field = get_current_ips_id()
 
-    # Inicialización previa de session_state para evitar warnings
-    for i, proceso in enumerate(PROCESOS_BLH):
+    # Inicializa llaves para evitar warnings
+    for i, _ in enumerate(PROCESOS_BLH):
         costo_key = f"{SECTION_PREFIX}costo_{i}"
         actividad_key = f"{SECTION_PREFIX}actividad_{i}"
         if costo_key not in st.session_state:
@@ -84,21 +112,22 @@ Esta sección solicita el **costo mensual estimado** y las **actividades realiza
         if actividad_key not in st.session_state:
             st.session_state[actividad_key] = ""
 
-    # Precarga desde Google Sheets (solo una vez por sesión)
     if id_field and not data_loaded:
-        loaded_data = load_existing_data(id_field, sheet_name=SHEET_NAME)
+        loaded_data = load_existing_data(id_field, sheet_name=SHEET_NAME) or {}
         if loaded_data:
             for i, proceso in enumerate(PROCESOS_BLH):
                 k_costo = f"costos_{proceso}"
                 k_act = f"actividades_{proceso}"
                 costo_key = f"{SECTION_PREFIX}costo_{i}"
                 actividad_key = f"{SECTION_PREFIX}actividad_{i}"
+
                 if k_costo in loaded_data:
-                    st.session_state[costo_key] = float(loaded_data[k_costo])
+                    st.session_state[costo_key] = _money_to_float(loaded_data[k_costo])
                 if k_act in loaded_data:
-                    st.session_state[actividad_key] = loaded_data[k_act]
-            st.session_state[DATA_LOADED_KEY] = True
-            st.rerun()
+                    st.session_state[actividad_key] = _to_str(loaded_data[k_act])
+
+        st.session_state[DATA_LOADED_KEY] = True
+        st.rerun()
 
     costos_data = {}
     actividades_data = {}
@@ -110,32 +139,33 @@ Esta sección solicita el **costo mensual estimado** y las **actividades realiza
             with col1:
                 st.markdown(f"**{proceso}**")
             with col2:
-                costo_key = f"{SECTION_PREFIX}costo_{i}"
                 costo = st.number_input(
                     f"Costo mensual (COP) - {proceso}",
                     min_value=0.0,
                     step=1000.0,
-                    key=costo_key
+                    key=f"{SECTION_PREFIX}costo_{i}",
                 )
             with col3:
-                actividad_key = f"{SECTION_PREFIX}actividad_{i}"
                 actividad = st.text_input(
                     f"Actividades realizadas (o escriba 'NA') - {proceso}",
-                    key=actividad_key
+                    key=f"{SECTION_PREFIX}actividad_{i}",
                 )
-            costos_data[proceso] = costo
-            actividades_data[proceso] = actividad.strip() or "NA"
+
+            costos_data[proceso] = float(costo)
+            actividades_data[proceso] = (actividad or "").strip() or "NA"
+
             resumen_tabla.append({
                 "Proceso": proceso,
                 "Costo mensual (COP)": format_cop(costo),
-                "Actividades": actividades_data[proceso]
+                "Actividades": actividades_data[proceso],
             })
+
         submitted = st.form_submit_button("💾 Guardar sección - Costos por Proceso")
 
     if submitted:
         id_field = get_current_ips_id()
         if not id_field:
-            st.error("❌ No se encontró el identificador de la IPS. Complete primero la sección de Identificación y asegúrese de no refrescar la página.")
+            st.error("❌ No se encontró el identificador de la IPS. Complete primero la sección de Identificación.")
             return
 
         is_complete = any(v > 0 for v in costos_data.values())
@@ -145,17 +175,18 @@ Esta sección solicita el **costo mensual estimado** y las **actividades realiza
 
         flat_data = flat_costs_dict(costos_data, actividades_data, id_field, is_complete)
 
-        for field in MINIMUM_HEADERS_BY_SECTION[SECTION_PREFIX]:
-            if field not in flat_data:
-                flat_data[field] = ""
+        # Asegura todas las columnas esperadas
+        for field in MINIMUM_HEADERS_BY_SECTION.get(SECTION_PREFIX, []):
+            flat_data.setdefault(field, "")
 
+        # Refleja en session_state (útil para exportaciones globales)
         for k, v in flat_data.items():
             st.session_state[f"{SECTION_PREFIX}{k}"] = v
 
         success = safe_save_section(
             id_field=id_field,
             section_prefix=SECTION_PREFIX,
-            sheet_name=SHEET_NAME
+            sheet_name=SHEET_NAME,
         )
 
         if success:
