@@ -1,43 +1,72 @@
-import streamlit as st
+import copy
 import pandas as pd
+import streamlit as st
 
-from utils.state_manager import flatten_session_state, get_current_ips_id, get_current_ips_nombre
-from utils.sheet_io import append_or_update_row
+from utils.state_manager import get_current_ips_id, get_current_ips_nombre
+from utils.sheet_io import append_or_update_row, load_existing_data
 from utils.ui_styles import render_info_box, render_compact_example_box
 
-def safe_float(value, default=0.0):
-    try:
-        return float(value)
-    except (ValueError, TypeError):
-        return default
+# ──────────────────────────────────────────────
+PREFIX = "servicios_publicos__"
+SHEET_NAME = "Servicios_Publicos"
+
+NAME_KEY = PREFIX + "nombre_inst"
+DF_KEY = PREFIX + "df"                 # fuente de verdad del editor
+LOADED_FLAG = PREFIX + "loaded"
+COMPLETION_KEY = PREFIX + "completed"
+FORM_KEY = PREFIX + "form"
+EDITOR_KEY = PREFIX + "editor"
+
+DEFAULT_RUBROS = [
+    {"rubro": "Energía eléctrica", "costo": 0.0},
+    {"rubro": "Agua y alcantarillado", "costo": 0.0},
+    {"rubro": "Telefonía fija e Internet", "costo": 0.0},
+    {"rubro": "Otros", "costo": 0.0},
+]
+
+def _rows_to_df(rows):
+    rows = rows or []
+    if not rows:
+        rows = copy.deepcopy(DEFAULT_RUBROS)
+    df = pd.DataFrame([{
+        "Rubro": str(r.get("rubro", "")).strip(),
+        "Costo mensual (COP)": float(r.get("costo", 0.0) or 0.0),
+    } for r in rows])
+    if not df.empty:
+        df["Rubro"] = df["Rubro"].astype(str)
+        df["Costo mensual (COP)"] = pd.to_numeric(
+            df["Costo mensual (COP)"], errors="coerce"
+        ).fillna(0.0)
+    return df
+
+def _df_to_rows(df: pd.DataFrame):
+    rows = []
+    if not isinstance(df, pd.DataFrame) or df.empty:
+        return rows
+    for _, row in df.iterrows():
+        rubro = str(row.get("Rubro", "")).strip()
+        if not rubro:
+            continue
+        try:
+            costo = float(row.get("Costo mensual (COP)", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            costo = 0.0
+        rows.append({"rubro": rubro, "costo": costo})
+    return rows
 
 def render():
     st.header("9. 💡 Servicios Públicos del Banco de Leche Humana (Pregunta 23)")
 
-    prefix = "servicios_publicos__"
-    completion_flag = prefix + "completed"
-    SHEET_NAME = "Servicios_Publicos"  # nombre corto y sin espacios
-
-    # Mostrar nombre oficial de la IPS validada
-    nombre_inst_oficial = get_current_ips_nombre()
-    st.text_input(
-        "🏥 Nombre completo y oficial de la institución:",
-        value=nombre_inst_oficial,
-        key=prefix + "nombre_inst",
-        disabled=True
-    )
+    # Nombre IPS (solo lectura, sin 'value' adicional)
+    if NAME_KEY not in st.session_state:
+        st.session_state[NAME_KEY] = get_current_ips_nombre() or ""
+    st.text_input("🏥 Nombre completo y oficial de la institución:", key=NAME_KEY, disabled=True)
 
     # Instrucciones
     st.markdown(render_info_box("""
 **ℹ️ ¿Qué información debe registrar?**  
-Por favor indique los **rubros de servicios públicos** que tienen un **costo mensual atribuible al BLH**, incluyendo:
-
-- Energía eléctrica  
-- Agua y alcantarillado  
-- Telefonía fija e Internet  
-- Otros rubros si aplica
-
-Todos los valores deben estar expresados en **pesos colombianos (COP)**. Registre **0** si un rubro no aplica.
+Indique los **rubros de servicios públicos** con **costo mensual atribuible al BLH** (COP).  
+Registre **0** si un rubro no aplica.
 """), unsafe_allow_html=True)
 
     st.markdown(render_compact_example_box("""
@@ -51,58 +80,55 @@ Todos los valores deben estar expresados en **pesos colombianos (COP)**. Registr
 | Otros                          | 0                   |
 """), unsafe_allow_html=True)
 
-    default_rubros = [
-        {"Rubro": "Energía eléctrica", "Costo mensual (COP)": 0.0},
-        {"Rubro": "Agua y alcantarillado", "Costo mensual (COP)": 0.0},
-        {"Rubro": "Telefonía fija e Internet", "Costo mensual (COP)": 0.0},
-        {"Rubro": "Otros", "Costo mensual (COP)": 0.0}
-    ]
+    # 1) Inicializa DF por defecto una sola vez
+    if DF_KEY not in st.session_state:
+        st.session_state[DF_KEY] = _rows_to_df(copy.deepcopy(DEFAULT_RUBROS))
 
-    prev_data = st.session_state.get(prefix + "data", [])
-    df = pd.DataFrame(prev_data) if prev_data else pd.DataFrame(default_rubros)
+    # 2) Precarga desde Google Sheets SOLO una vez, sin st.rerun()
+    ips_id = get_current_ips_id()
+    if ips_id and not st.session_state.get(LOADED_FLAG, False):
+        loaded = load_existing_data(ips_id, sheet_name=SHEET_NAME) or {}
+        loaded_rows = loaded.get("servicios_publicos")
+        if isinstance(loaded_rows, list) and loaded_rows:
+            st.session_state[DF_KEY] = _rows_to_df(loaded_rows)
+        st.session_state[LOADED_FLAG] = True
 
-    # Editor de tabla
-    edited_df = st.data_editor(
-        df,
-        key=f"{prefix}_editor",
-        column_config={
-            "Rubro": st.column_config.TextColumn("Nombre del rubro"),
-            "Costo mensual (COP)": st.column_config.NumberColumn(
-                "Costo mensual (COP)", min_value=0, step=10000
-            )
-        },
-        hide_index=True,
-        num_rows="dynamic",
-        use_container_width=True
-    )
+    # 3) Editor dentro de un FORM → no hay reruns por celda
+    with st.form(FORM_KEY, clear_on_submit=False):
+        edited_df = st.data_editor(
+            st.session_state[DF_KEY],
+            key=EDITOR_KEY,
+            column_config={
+                "Rubro": st.column_config.TextColumn("Nombre del rubro"),
+                "Costo mensual (COP)": st.column_config.NumberColumn(
+                    "Costo mensual (COP)", min_value=0, step=10000
+                ),
+            },
+            hide_index=True,
+            num_rows="dynamic",
+            use_container_width=True,
+        )
 
-    # Extrae y valida los datos editados
-    services_data = []
-    for _, row in edited_df.iterrows():
-        rubro = str(row.get("Rubro", "")).strip()
-        costo = safe_float(row.get("Costo mensual (COP)", 0.0))
-        if rubro:
-            services_data.append({"rubro": rubro, "costo": costo})
+        submitted = st.form_submit_button("💾 Guardar sección - Servicios Públicos")
 
-    # Sección siempre se marca como completada si hay al menos un rubro
-    st.session_state[completion_flag] = bool(services_data)
-    st.session_state[prefix + "data"] = services_data
+    # 4) Si se envía el formulario, persistimos lo editado y guardamos
+    if submitted:
+        st.session_state[DF_KEY] = edited_df.copy()
+        rows = _df_to_rows(st.session_state[DF_KEY])
+        st.session_state[COMPLETION_KEY] = bool(rows)
 
-    if st.button("💾 Guardar sección - Servicios Públicos"):
-        id_ips = get_current_ips_id(st.session_state)
-        if not id_ips:
+        if not ips_id:
             st.error("❌ No se encontró el identificador único de la IPS. Complete primero la sección de Identificación.")
             return
 
-        flat_data = {
-            "ips_id": id_ips,
-            "servicios_publicos": services_data,
-            completion_flag: st.session_state[completion_flag]
+        payload = {
+            "ips_id": ips_id,
+            "servicios_publicos": rows,
+            COMPRETION_KEY if 'COMPRETION_KEY' in globals() else COMTECTION_KEY if 'COMTECTION_KEY' in globals() else COMPlETION_KEY if 'COMPlETION_KEY' in globals() else COMPlETION_KEY if 'COMPlETION_KEY' in globals() else COMPlETION_KEY if 'COMPlETION_KEY' in globals() else COMPlETION_KEY if 'COMPlETION_KEY' in globals() else COMPlETION_KEY if 'COMPlETION_KEY' in globals() else COMPlETION_KEY if 'COMPlETION_KEY' in globals() else COMPlETION_KEY if 'COMPlETION_KEY' in globals() else COMPlETION_KEY if 'COMPlETION_KEY' in globals() else COMPlETION_KEY if 'COMPlETION_KEY' in globals() else COMPlETION_KEY if 'COMPlETION_KEY' in globals() else COMPlETION_KEY if 'COMPlETION_KEY' in globals() else COMPlETION_KEY if 'COMPlETION_KEY' in globals() else COMPLETION_KEY: st.session_state[COMPLETION_KEY]
         }
 
-        success = append_or_update_row(flat_data, sheet_name=SHEET_NAME)
-
-        if success:
+        ok = append_or_update_row(payload, sheet_name=SHEET_NAME)
+        if ok:
             st.success("✅ Costos de servicios públicos guardados correctamente.")
             if "section_index" in st.session_state and st.session_state.section_index < 13:
                 st.session_state.section_index += 1
@@ -110,3 +136,9 @@ Todos los valores deben estar expresados en **pesos colombianos (COP)**. Registr
                 st.rerun()
         else:
             st.error("❌ Error al guardar los datos. Por favor intente nuevamente.")
+    else:
+        # Aunque no se guarde, mantenemos en memoria lo que está en la tabla
+        # (no provoca reruns por celda)
+        st.session_state[DF_KEY] = edited_df.copy()
+        rows = _df_to_rows(st.session_state[DF_KEY])
+        st.session_state[COMPLETION_KEY] = bool(rows)
